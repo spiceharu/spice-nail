@@ -1,8 +1,8 @@
 export default function Home() {
   return (
-    <div style={{ textAlign: "center", marginTop: "80px" }}>
-      <h1>Spice Nail</h1>
-      <p>ようこそ！こちらはお客様用のトップページです。</p>
+    <div style={{ textAlign: "center", marginTop: "100px" }}>
+      <h1>🎉 Spice Nail へようこそ！ 🎉</h1>
+      <p>このページが見えていればデプロイ成功です！</p>
     </div>
   );
 }
