@@ -1,13 +1,14 @@
-// src/components/Hero.jsx
-export default function Hero({ heroUrl }) {
+import Hero from "../components/Hero";
+
+export default function Home() {
+  const heroUrl = "/images/hero-desktop.png"; // ← ここで画像のパスを指定！
+
   return (
-    <section className="hero">
-      <img
-        src={heroUrl}
-        alt="Top"
-        className="hero-img"
-        style={{ width: '100%', height: 320, objectFit: 'cover', borderRadius: 12 }}
-      />
-    </section>
+    <div style={{ textAlign: "center", marginTop: "50px" }}>
+      <Hero heroUrl={heroUrl} />
+
+      <h1>Spice Nail へようこそ！</h1>
+      <p>このページが表示されていればデプロイ成功です！</p>
+    </div>
   );
 }
