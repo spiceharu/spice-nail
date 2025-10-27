@@ -1,23 +1,3 @@
-body {
-  font-family: "Hiragino Kaku Gothic ProN", "Segoe UI", sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #fffafc;
-  color: #333;
-}
-
-h1 {
-  color: #d86b8b;
-}
-
-a {
-  color: #d86b8b;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
 /* --- Hero --- */
 .hero {
   position: relative;
