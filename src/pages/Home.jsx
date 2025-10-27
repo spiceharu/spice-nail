@@ -1,31 +1,18 @@
 // src/pages/Home.jsx
-import { useEffect, useState } from 'react';
-import { fetchConfig } from '../lib/siteConfig';
-import Hero from '../components/Hero';
+import Hero from "../components/Hero";
+
+// ✅ Viteのimportでpublic配下の画像を解決（これが一番安定）
+import heroDesktop from "/images/hero-desktop.png";
 
 export default function Home() {
-  const [cfg, setCfg] = useState(null);
-
-  useEffect(() => {
-    fetchConfig().then(setCfg).catch(console.error);
-  }, []);
-
-  if (!cfg) return null;
+  const heroUrl = heroDesktop; // ← 文字列ではなく import した値を渡す
 
   return (
-    <div style={{ padding: 16 }}>
-      <Hero heroUrl={cfg.heroUrl} />
+    <div style={{ textAlign: "center", marginTop: "50px" }}>
+      <Hero heroUrl={heroUrl} />
 
-      {/* ここに既存のSNSや予約などのブロックを続けて置いてOK */}
-      <section style={{ marginTop: 24 }}>
-        <h2>SNS</h2>
-        {/* ... */}
-      </section>
-
-      <section style={{ marginTop: 24 }}>
-        <h2>予約について</h2>
-        {/* ... */}
-      </section>
+      <h1>Spice Nail へようこそ！</h1>
+      <p>このページが表示されていればデプロイ成功です！</p>
     </div>
   );
 }
