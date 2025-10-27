@@ -1,8 +1,8 @@
 {
   "name": "spice-nail",
   "private": true,
-  "version": "0.0.1",
   "type": "module",
+  "version": "0.0.1",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +14,7 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
-    "vite": "^5.4.0"
+    "vite": "^5.4.0",
+    "@vitejs/plugin-react": "^4.3.0"
   }
 }
