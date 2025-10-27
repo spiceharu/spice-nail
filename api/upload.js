@@ -13,19 +13,18 @@ export default async function handler(req) {
   if (!file || typeof file === 'string') {
     return new Response(JSON.stringify({ error: 'file not found' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
   const key = `images/${Date.now()}-${file.name}`;
-
   const { url } = await put(key, file, {
     access: 'public',
-    contentType: file.type || 'image/jpeg'
+    contentType: file.type || 'image/jpeg',
   });
 
   return new Response(JSON.stringify({ url }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
   });
 }
