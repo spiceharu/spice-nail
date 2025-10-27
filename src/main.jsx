@@ -1,12 +1,15 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import Home from "./pages/Home.jsx";
-import Admin from "./pages/Admin.jsx";
+// src/main.jsx
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home.jsx';
+import Admin from './pages/Admin.jsx';
+import './style.css';
 
-const router = createBrowserRouter([
-  { path: "/", element: <Home /> },
-  { path: "/admin", element: <Admin /> },
-]);
-
-createRoot(document.getElementById("root")).render(<RouterProvider router={router} />);
+createRoot(document.getElementById('root')).render(
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/admin" element={<Admin />} />
+    </Routes>
+  </BrowserRouter>
+);
