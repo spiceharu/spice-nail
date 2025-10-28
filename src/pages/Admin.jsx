@@ -1,228 +1,153 @@
+// /src/pages/Admin.jsx
 import { useEffect, useRef, useState } from "react";
-import { fetchConfig, saveConfig } from "../lib/siteConfig";
-import { DEFAULT_SITE } from "../lib/siteStore";
+import { fetchConfigSafe, saveConfigSafe } from "../lib/siteConfig";
 
 export default function Admin() {
-  const [cfg, setCfg] = useState(DEFAULT_SITE);
-  const [previewD, setPreviewD] = useState("");
-  const [previewM, setPreviewM] = useState("");
-  const [fileD, setFileD] = useState(null);
-  const [fileM, setFileM] = useState(null);
+  const [cfg, setCfg] = useState(null);
   const [saving, setSaving] = useState(false);
-  const inputD = useRef(null);
-  const inputM = useRef(null);
+
+  const [filePc, setFilePc] = useState(null);
+  const [fileSp, setFileSp] = useState(null);
+  const [previewPc, setPreviewPc] = useState("");
+  const [previewSp, setPreviewSp] = useState("");
+
+  const pcInput = useRef(null);
+  const spInput = useRef(null);
 
   useEffect(() => {
-    fetchConfig().then((c) => {
+    (async () => {
+      const c = await fetchConfigSafe();
       setCfg(c);
-      setPreviewD(c.hero?.desktopImage || "");
-      setPreviewM(c.hero?.mobileImage || "");
-    });
+      setPreviewPc(c.hero?.desktopImage || "");
+      setPreviewSp(c.hero?.mobileImage || "");
+    })();
   }, []);
 
-  const pick =
-    (ref) =>
-    (e) => {
-      e.preventDefault();
-      ref.current?.click();
-    };
+  const onSelectPc = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFilePc(f);
+    setPreviewPc(URL.createObjectURL(f));
+  };
+  const onSelectSp = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFileSp(f);
+    setPreviewSp(URL.createObjectURL(f));
+  };
 
-  const onSelect =
-    (setterFile, setterPreview) =>
-    (e) => {
-      const f = e.target.files?.[0];
-      if (!f) return;
-      setterFile(f);
-      setterPreview(URL.createObjectURL(f));
-    };
+  const allowDrop = (e) => e.preventDefault();
+  const onDropPc = (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (!f) return;
+    setFilePc(f);
+    setPreviewPc(URL.createObjectURL(f));
+  };
+  const onDropSp = (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (!f) return;
+    setFileSp(f);
+    setPreviewSp(URL.createObjectURL(f));
+  };
 
-  const onDrop =
-    (setterFile, setterPreview) =>
-    (e) => {
-      e.preventDefault();
-      const f = e.dataTransfer.files?.[0];
-      if (!f) return;
-      setterFile(f);
-      setterPreview(URL.createObjectURL(f));
-    };
-
-  async function uploadBlob(f) {
+  async function upload(file) {
     const fd = new FormData();
-    fd.append("file", f);
+    fd.append("file", file);
     const up = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!up.ok) throw new Error("upload failed");
-    const { url } = await up.json();
-    return url;
+    const j = await up.json();
+    if (!up.ok) throw new Error(j.error || "upload failed");
+    return j.url;
   }
 
   async function onSave() {
+    if (!cfg) return;
+    setSaving(true);
     try {
-      setSaving(true);
-      let desktop = cfg.hero.desktopImage;
-      let mobile = cfg.hero.mobileImage;
-      if (fileD) desktop = await uploadBlob(fileD);
-      if (fileM) mobile = await uploadBlob(fileM);
+      let desktop = cfg.hero?.desktopImage || "";
+      let mobile = cfg.hero?.mobileImage || "";
+      if (filePc) desktop = await upload(filePc);
+      if (fileSp) mobile = await upload(fileSp);
 
-      const payload = {
+      const next = {
         ...cfg,
-        hero: { desktopImage: desktop, mobileImage: mobile }
+        hero: { ...(cfg.hero || {}), desktopImage: desktop, mobileImage: mobile }
       };
-      await saveConfig(payload);
+      await saveConfigSafe(next);
+      setCfg(next);
       alert("保存しました！");
-      setFileD(null);
-      setFileM(null);
     } catch (e) {
       console.error(e);
-      alert("保存に失敗しました");
+      alert("保存に失敗しました。");
     } finally {
       setSaving(false);
     }
   }
 
-  function updateSocial(key, val) {
-    setCfg((c) => ({ ...c, socials: { ...c.socials, [key]: val } }));
-  }
-  function updateMap(key, val) {
-    setCfg((c) => ({ ...c, map: { ...c.map, [key]: val } }));
-  }
-
-  function moveSection(idx, dir) {
-    setCfg((c) => {
-      const arr = [...(c.sectionsOrder || [])];
-      const ni = idx + dir;
-      if (ni < 0 || ni >= arr.length) return c;
-      [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
-      return { ...c, sectionsOrder: arr };
-    });
-  }
-
-  const allow = (e) => e.preventDefault();
+  if (!cfg)
+    return (
+      <main>
+        <div className="card">読み込み中…</div>
+      </main>
+    );
 
   return (
-    <div className="container">
-      <h1>管理画面</h1>
+    <main>
+      <h1 className="card" style={{ fontSize: 20, fontWeight: 700 }}>
+        管理画面
+      </h1>
 
-      {/* Hero Desktop */}
       <section className="card">
-        <h2>トップ画像（PC）</h2>
-        <div
-          className="pill"
-          style={{ display: "inline-flex" }}
-          onClick={pick(inputD)}
-          onDragOver={allow}
-          onDrop={onDrop(setFileD, setPreviewD)}
-          title="クリックまたはドラッグ＆ドロップ"
-        >
-          画像を入れる（PC）
-        </div>
-        <input ref={inputD} type="file" accept="image/*" hidden onChange={onSelect(setFileD, setPreviewD)} />
-        {previewD ? (
-          <div style={{ marginTop: 12 }}>
-            <img src={previewD} alt="" style={{ width: "100%", maxWidth: 600, borderRadius: 12 }} />
-          </div>
-        ) : null}
-      </section>
-
-      {/* Hero Mobile */}
-      <section className="card">
-        <h2>トップ画像（スマホ）</h2>
-        <div
-          className="pill"
-          style={{ display: "inline-flex" }}
-          onClick={pick(inputM)}
-          onDragOver={allow}
-          onDrop={onDrop(setFileM, setPreviewM)}
-          title="クリックまたはドラッグ＆ドロップ"
-        >
-          画像を入れる（スマホ）
-        </div>
-        <input ref={inputM} type="file" accept="image/*" hidden onChange={onSelect(setFileM, setPreviewM)} />
-        {previewM ? (
-          <div style={{ marginTop: 12 }}>
-            <img src={previewM} alt="" style={{ width: 260, height: 260, objectFit: "cover", borderRadius: 12 }} />
-          </div>
-        ) : null}
-      </section>
-
-      {/* SNS */}
-      <section className="card">
-        <h2>SNSリンク</h2>
+        <h2>トップ画像（PC / スマホ）</h2>
         <div className="row">
-          {["instagram", "tiktok", "x", "youtube"].map((k) => (
-            <div key={k} style={{ flex: "1 1 240px" }}>
-              <label className="small">{k.toUpperCase()}</label>
-              <input
-                className="input"
-                placeholder={`https://...`}
-                value={cfg.socials?.[k] || ""}
-                onChange={(e) => updateSocial(k, e.target.value)}
-              />
+          <div className="col">
+            <div
+              className="drop"
+              onDragOver={allowDrop}
+              onDrop={onDropPc}
+              onClick={() => pcInput.current?.click()}
+            >
+              PC用：ここに画像をドラッグ＆ドロップ / クリックして選択
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Map */}
-      <section className="card">
-        <h2>アクセス（Googleマップ）</h2>
-        <div className="row">
-          <div>
-            <label className="small">店名</label>
             <input
-              className="input"
-              value={cfg.map?.placeName || ""}
-              onChange={(e) => updateMap("placeName", e.target.value)}
+              ref={pcInput}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={onSelectPc}
             />
+            {previewPc && <img src={previewPc} className="thumb" alt="pc" />}
           </div>
-          <div>
-            <label className="small">住所</label>
+
+          <div className="col">
+            <div
+              className="drop"
+              onDragOver={allowDrop}
+              onDrop={onDropSp}
+              onClick={() => spInput.current?.click()}
+            >
+              スマホ用：ここに画像をドラッグ＆ドロップ / クリックして選択
+            </div>
             <input
-              className="input"
-              value={cfg.map?.address || ""}
-              onChange={(e) => updateMap("address", e.target.value)}
+              ref={spInput}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={onSelectSp}
             />
+            {previewSp && <img src={previewSp} className="thumb" alt="sp" />}
           </div>
         </div>
-        <div style={{ marginTop: 8 }}>
-          <label className="small">埋め込みURL（iframe の src）</label>
-          <input
-            className="input"
-            placeholder="https://www.google.com/maps/embed?..."
-            value={cfg.map?.embedSrc || ""}
-            onChange={(e) => updateMap("embedSrc", e.target.value)}
-          />
+
+        <div style={{ marginTop: 16 }}>
+          <button className="btn" onClick={onSave} disabled={saving}>
+            {saving ? "保存中…" : "保存する"}
+          </button>
         </div>
       </section>
 
-      {/* 表示順 */}
-      <section className="card">
-        <h2>表示順</h2>
-        <ul className="section-order">
-          {(cfg.sectionsOrder || DEFAULT_SITE.sectionsOrder).map((s, i) => (
-            <li key={s}>
-              <span>{s}</span>
-              <span>
-                <button className="btn" style={{ marginRight: 6 }} onClick={() => moveSection(i, -1)}>
-                  ↑
-                </button>
-                <button className="btn" onClick={() => moveSection(i, +1)}>
-                  ↓
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="small">（hero / banner / sns / reservation / map）</p>
-      </section>
-
-      <div style={{ marginTop: 16 }}>
-        <button className="btn" onClick={onSave} disabled={saving}>
-          {saving ? "保存中..." : "保存する"}
-        </button>
-      </div>
-      <div className="small" style={{ marginTop: 6 }}>
-        /admin にアクセスできる人だけが編集できます
-      </div>
-    </div>
+      <footer>© Spice Nail</footer>
+    </main>
   );
 }
