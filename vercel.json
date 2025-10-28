@@ -1,11 +1,6 @@
 {
-  "cleanUrls": true,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "header", "key": "accept", "value": "text/html" }],
-      "destination": "/index.html"
-    }
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/:path*", "destination": "/" }
   ]
 }
