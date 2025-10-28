@@ -1,5 +1,5 @@
 // /api/config.js
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs18.x' }; // ← Edge → Node.js に変更！
 
 import { put, list } from '@vercel/blob';
 
@@ -15,20 +15,14 @@ async function readConfigFromBlob() {
   return await res.json();
 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method === 'GET') {
     const current = (await readConfigFromBlob()) ?? { heroUrl: '/images/hero-desktop.png' };
-    return new Response(JSON.stringify(current), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-      },
-    });
+    return res.status(200).json(current);
   }
 
   if (req.method === 'POST') {
-    const body = await req.json();
+    const body = req.body;
     const toSave = {
       heroUrl: body.heroUrl || '/images/hero-desktop.png',
     };
@@ -39,11 +33,8 @@ export default async function handler(req) {
       addRandomSuffix: false,
     });
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(200).json({ ok: true });
   }
 
-  return new Response('Method Not Allowed', { status: 405 });
+  return res.status(405).send('Method Not Allowed');
 }
