@@ -12,7 +12,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
-    "@vercel/blob": "^0.25.2",
+    "@vercel/blob": "0.24.0",        // ← ここをこの値に
     "formidable": "^3.5.0"
   },
   "devDependencies": {
