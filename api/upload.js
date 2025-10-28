@@ -1,30 +1,23 @@
 // /api/upload.js
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs18.x' }; // ← Edge → Node.js に変更！
 
 import { put } from '@vercel/blob';
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    return res.status(405).send('Method Not Allowed');
   }
 
-  const formData = await req.formData();
-  const file = formData.get('file');
-  if (!file || typeof file === 'string') {
-    return new Response(JSON.stringify({ error: 'file not found' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  const file = req.files?.file;
+  if (!file) {
+    return res.status(400).json({ error: 'file not found' });
   }
 
-  const key = `images/${Date.now()}-${file.name}`;
-  const { url } = await put(key, file, {
+  const key = `images/${Date.now()}-${file.originalFilename}`;
+  const { url } = await put(key, file.filepath ? Buffer.from(file.filepath) : file, {
     access: 'public',
-    contentType: file.type || 'image/jpeg',
+    contentType: file.mimetype || 'image/jpeg',
   });
 
-  return new Response(JSON.stringify({ url }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return res.status(200).json({ url });
 }
