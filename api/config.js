@@ -5,37 +5,28 @@ import { put, list } from "@vercel/blob";
 
 const CONFIG_KEY = "config/site.json";
 
-async function readConfigFromBlob() {
-  const blobs = await list({ prefix: "config/" });
-  const found = blobs.blobs.find(b => b.pathname === CONFIG_KEY);
+async function readJson(pathname) {
+  const blobs = await list({ prefix: pathname.split("/")[0] + "/" });
+  const found = blobs.blobs.find((b) => b.pathname === pathname);
   if (!found) return null;
   const res = await fetch(found.url, { cache: "no-store" });
   if (!res.ok) return null;
   return await res.json();
 }
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method === "GET") {
-    const current = (await readConfigFromBlob()) ?? null;
-    // 見つからなくても 200 で空オブジェクト（フロント側で既定値にフォールバック）
-    return new Response(JSON.stringify(current ?? {}), {
-      status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
-    });
+    const current = (await readJson(CONFIG_KEY)) ?? {};
+    return res.status(200).json(current);
   }
-
   if (req.method === "POST") {
-    const body = await req.json();
+    const body = req.body || {};
     await put(CONFIG_KEY, JSON.stringify(body), {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false
     });
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
+    return res.status(200).json({ ok: true });
   }
-
-  return new Response("Method Not Allowed", { status: 405 });
+  return res.status(405).send("Method Not Allowed");
 }
