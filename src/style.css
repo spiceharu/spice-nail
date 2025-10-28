@@ -1,14 +1,63 @@
-:root { color-scheme: light; }
-body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#fafafa; }
-.container { max-width: 1000px; margin: 20px auto; padding: 0 12px; }
-.card { background:#fff; border-radius:12px; box-shadow:0 1px 10px rgba(0,0,0,.06); padding:16px; margin:12px 0; }
-h1,h2,h3 { margin: 0 0 12px; }
-.hero-img { display:block; width:100%; border-radius:12px; }
-.row { display:flex; gap:12px; flex-wrap:wrap; }
-.row > * { flex:1 1 300px; }
-.input, textarea { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:10px; }
-.btn { background:#111; color:#fff; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; }
-.btn:disabled { opacity:.6; cursor:not-allowed; }
-.pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px dashed #aaa; border-radius:12px; background:#f4f4f4; cursor:pointer; }
-.small { font-size:12px; color:#888; }
-.section-order li{ list-style:none; padding:8px 10px; background:#f6f6f6; border-radius:8px; margin:6px 0; display:flex; justify-content:space-between; align-items:center;}
+:root{
+  --bg:#f6f7f8;
+  --card:#fff;
+  --text:#222;
+  --muted:#666;
+  --border:#e5e7eb;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  color:var(--text);
+  background:var(--bg);
+}
+
+main{ max-width:980px; margin:0 auto; padding:12px; }
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px;
+  margin:12px 0;
+}
+
+.hero-img{
+  width:100%;
+  height:320px;
+  object-fit:cover;
+  border-radius:12px;
+  display:block;
+}
+
+.bannerWrap{ overflow:hidden; }
+.bannerTrack{ display:flex; gap:8px; }
+.banner-gi{ flex:0 0 33.333%; height:26vw; max-height:320px; min-height:140px; object-fit:cover; border-radius:12px; }
+
+.drop{
+  border:2px dashed #aaa;
+  border-radius:12px;
+  padding:24px;
+  text-align:center;
+  cursor:pointer;
+  background:#fafafa;
+}
+
+.row{ display:flex; gap:12px; flex-wrap:wrap; }
+.col{ flex:1 1 320px; }
+img.thumb{ width:100%; height:200px; object-fit:cover; border-radius:8px; border:1px solid var(--border); }
+
+.btn{
+  all:unset;
+  background:#111827;
+  color:#fff;
+  padding:10px 16px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+footer{ text-align:center; color:var(--muted); padding:36px 0; }
