@@ -1,13 +1,12 @@
 // /api/config.js
 export const config = { runtime: "nodejs" };
 
-import { put, list } from "@vercel/blob/edge";
+import { put, list } from "@vercel/blob";
 
 const CONFIG_KEY = "config/site.json";
 
 async function readConfigFromBlob() {
-  // 既存の site.json があればそれを読む
-  const blobs = await list({ prefix: CONFIG_KEY });
+  const blobs = await list({ prefix: "config/" });
   const found = blobs.blobs.find(b => b.pathname === CONFIG_KEY);
   if (!found) return null;
   const res = await fetch(found.url, { cache: "no-store" });
@@ -17,40 +16,21 @@ async function readConfigFromBlob() {
 
 export default async function handler(req) {
   if (req.method === "GET") {
-    const current = (await readConfigFromBlob()) ?? {
-      hero: {
-        desktopImage: "/images/hero-desktop.png",
-        mobileImage: "/images/hero-mobile.png"
-      },
-      socials: { instagram: "", tiktok: "", x: "", youtube: "" },
-      map: { placeName: "", address: "", embedSrc: "" },
-      sectionsOrder: ["hero", "banner", "sns", "reservation", "map"]
-    };
-    return new Response(JSON.stringify(current), {
+    const current = (await readConfigFromBlob()) ?? null;
+    // 見つからなくても 200 で空オブジェクト（フロント側で既定値にフォールバック）
+    return new Response(JSON.stringify(current ?? {}), {
       status: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
     });
   }
 
   if (req.method === "POST") {
-    const payload = await req.json();
-    const toSave = {
-      hero: {
-        desktopImage: payload.hero?.desktopImage || "/images/hero-desktop.png",
-        mobileImage: payload.hero?.mobileImage || "/images/hero-mobile.png"
-      },
-      socials: payload.socials || { instagram: "", tiktok: "", x: "", youtube: "" },
-      map: payload.map || { placeName: "", address: "", embedSrc: "" },
-      sectionsOrder:
-        payload.sectionsOrder || ["hero", "banner", "sns", "reservation", "map"]
-    };
-
-    await put(CONFIG_KEY, JSON.stringify(toSave), {
+    const body = await req.json();
+    await put(CONFIG_KEY, JSON.stringify(body), {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false
     });
-
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
