@@ -1,44 +1,61 @@
 // /api/config.js
-export const config = { runtime: 'nodejs' }; // ← これが正解（'nodejs18.x' ではなく 'nodejs'）
+export const config = { runtime: "edge" };
 
-import { put, list } from '@vercel/blob';
+import { put, list } from "@vercel/blob";
 
-const CONFIG_KEY = 'config/site.json';
+const CONFIG_KEY = "config/site.json";
 
 async function readConfigFromBlob() {
+  // 既存の site.json があればそれを読む
   const blobs = await list({ prefix: CONFIG_KEY });
-  const found = blobs.blobs.find((b) => b.pathname === CONFIG_KEY);
+  const found = blobs.blobs.find(b => b.pathname === CONFIG_KEY);
   if (!found) return null;
-
-  const res = await fetch(found.url, { cache: 'no-store' });
+  const res = await fetch(found.url, { cache: "no-store" });
   if (!res.ok) return null;
   return await res.json();
 }
 
-export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    // ない場合はデフォルトで /images/hero-desktop.png を返す
-    const current = (await readConfigFromBlob()) ?? { heroUrl: '/images/hero-desktop.png' };
-    return res.status(200).json(current);
+export default async function handler(req) {
+  if (req.method === "GET") {
+    const current = (await readConfigFromBlob()) ?? {
+      hero: {
+        desktopImage: "/images/hero-desktop.png",
+        mobileImage: "/images/hero-mobile.png"
+      },
+      socials: { instagram: "", tiktok: "", x: "", youtube: "" },
+      map: { placeName: "", address: "", embedSrc: "" },
+      sectionsOrder: ["hero", "banner", "sns", "reservation", "map"]
+    };
+    return new Response(JSON.stringify(current), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
+    });
   }
 
-  if (req.method === 'POST') {
-    // 管理画面から { heroUrl: "..." } が来る想定
-    // フィールド名が違う場合でも heroUrl を最終的に作る
-    let body = req.body || {};
-    // Vercel の Node.js Functions は JSON なら自動で req.body に入ります
+  if (req.method === "POST") {
+    const payload = await req.json();
     const toSave = {
-      heroUrl: body.heroUrl || '/images/hero-desktop.png',
+      hero: {
+        desktopImage: payload.hero?.desktopImage || "/images/hero-desktop.png",
+        mobileImage: payload.hero?.mobileImage || "/images/hero-mobile.png"
+      },
+      socials: payload.socials || { instagram: "", tiktok: "", x: "", youtube: "" },
+      map: payload.map || { placeName: "", address: "", embedSrc: "" },
+      sectionsOrder:
+        payload.sectionsOrder || ["hero", "banner", "sns", "reservation", "map"]
     };
 
     await put(CONFIG_KEY, JSON.stringify(toSave), {
-      access: 'public',
-      contentType: 'application/json',
-      addRandomSuffix: false,
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false
     });
 
-    return res.status(200).json({ ok: true });
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
-  return res.status(405).send('Method Not Allowed');
+  return new Response("Method Not Allowed", { status: 405 });
 }
