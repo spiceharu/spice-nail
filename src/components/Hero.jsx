@@ -1,14 +1,8 @@
-export default function Hero({ site }) {
-  const isMobile =
-    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
-
-  const src = isMobile
-    ? site.hero?.mobileImage || "/images/hero-mobile.png"
-    : site.hero?.desktopImage || "/images/hero-desktop.png";
-
+// /src/components/Hero.jsx
+export default function Hero({ heroUrl }) {
   return (
-    <section className="card">
-      <img src={src} alt="Top" className="hero-img" style={{ height: isMobile ? 360 : 320, objectFit: "cover" }} />
+    <section className="hero">
+      <img src={heroUrl} alt="Top" className="hero-img" />
     </section>
   );
 }
