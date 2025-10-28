@@ -1,44 +1,29 @@
 // /api/upload.js
-export const config = { runtime: 'nodejs' }; // ← Node.js ランタイムを使う
+export const config = { runtime: "edge" };
 
-import fs from 'node:fs';
-import formidable from 'formidable';
-import { put } from '@vercel/blob';
+import { put } from "@vercel/blob";
 
-// formidable は Node.js のストリームを読んでくれるので、
-// Vercel Node.js Functions でもそのまま使えます。
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
+export default async function handler(req) {
+  if (req.method !== "POST")
+    return new Response("Method Not Allowed", { status: 405 });
+
+  const fd = await req.formData();
+  const file = fd.get("file");
+  if (!file || typeof file === "string") {
+    return new Response(JSON.stringify({ error: "file not found" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
-  const form = formidable({ multiples: false });
-  form.parse(req, async (err, fields, files) => {
-    try {
-      if (err) return res.status(400).json({ error: String(err) });
+  const key = `images/${Date.now()}-${file.name}`;
+  const { url } = await put(key, file, {
+    access: "public",
+    contentType: file.type || "image/jpeg"
+  });
 
-      const file = files.file;
-      if (!file) return res.status(400).json({ error: 'file not found' });
-
-      // formidable v3 系のプロパティ名（環境によって originalFilename / newFilename など表記揺れあり）
-      const filepath = file.filepath || file.file || file._writeStream?.path;
-      const filename = file.originalFilename || file.newFilename || 'upload.bin';
-      const mimetype = file.mimetype || 'application/octet-stream';
-
-      if (!filepath) return res.status(400).json({ error: 'invalid upload' });
-
-      const buffer = await fs.promises.readFile(filepath);
-      const key = `images/${Date.now()}-${filename}`;
-
-      const { url } = await put(key, buffer, {
-        access: 'public',
-        contentType: mimetype,
-      });
-
-      return res.status(200).json({ url });
-    } catch (e) {
-      console.error(e);
-      return res.status(500).json({ error: 'upload failed' });
-    }
+  return new Response(JSON.stringify({ url }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
   });
 }
