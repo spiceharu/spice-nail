@@ -1,16 +1,18 @@
 // /src/lib/siteConfig.js
 export const DEFAULT_SITE = {
+  backgroundImage: "", // ここに背景画像URL（未設定なら無地）
   hero: {
     desktopImage: "/images/hero-desktop.png",
-    mobileImage: "/images/hero-mobile.png",
-    videoUrl: ""
+    mobileImage: "/images/hero-mobile.png"
   },
-  bannersDesktop: [],
-  bannersMobile: [],
-  socials: { youtube: "", instagram: "", tiktok: "", x: "" },
-  map: { embedSrc: "", placeName: "", address: "" },
-  sectionsOrder: ["hero", "sns", "reservation", "map"],
-  scrollSpeed: 6
+  socials: {
+    youtube: "",
+    tiktok: "",
+    instagram: "",
+    x: ""
+  },
+  map: { placeName: "", address: "", embedSrc: "" },
+  sectionsOrder: ["hero", "sns", "reservation", "map"]
 };
 
 export async function fetchConfigSafe() {
@@ -25,11 +27,11 @@ export async function fetchConfigSafe() {
   }
 }
 
-export async function saveConfigSafe(partial) {
+export async function saveConfigSafe(next) {
   const res = await fetch("/api/config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(partial)
+    body: JSON.stringify(next)
   });
   if (!res.ok) throw new Error(`POST /api/config ${res.status}`);
   return res.json();
