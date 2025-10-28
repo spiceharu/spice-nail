@@ -1,7 +1,7 @@
 // /api/upload.js
 export const config = { runtime: "edge" };
 
-import { put } from "@vercel/blob";
+import { put, list } from "@vercel/blob/edge";
 
 export default async function handler(req) {
   if (req.method !== "POST")
