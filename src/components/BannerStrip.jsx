@@ -1,16 +1,18 @@
-export default function BannerStrip({site}){
-  const h = site.hero ?? {};
-  const sp = Math.max(3, Number(h.scrollSpeed || 6));
-  const imgs = (window.innerWidth>=768 ? h.bannersDesktop : h.bannersMobile) || [];
-  if(!imgs.length) return null;
+import { useMemo } from "react";
+
+export default function BannerStrip({ site }) {
+  const imgs = useMemo(
+    () => (site.bannersDesktop || []).concat(site.bannersMobile || []),
+    [site]
+  );
+  if (!imgs.length) return null;
   return (
-    <div className="bannerWrap">
-      <div className="bannerTrack" style={{animationDuration:`${sp*imgs.length}s`}}>
-        {[...imgs, ...imgs].map((src,i)=>(
-          <img key={i} src={src} alt={`banner-${i}`}
-               style={{width:"33.3333%",height:"26vw",maxHeight:320,minHeight:140,objectFit:"cover"}}/>
+    <section className="card">
+      <div className="row">
+        {imgs.map((src, i) => (
+          <img key={i} src={src} alt="" style={{ width: "33.33%", height: 140, objectFit: "cover", borderRadius: 10 }} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
