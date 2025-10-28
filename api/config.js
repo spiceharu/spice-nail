@@ -1,7 +1,7 @@
 // /api/config.js
 export const config = { runtime: "edge" };
 
-import { put, list } from "@vercel/blob";
+import { put, list } from "@vercel/blob/edge";
 
 const CONFIG_KEY = "config/site.json";
 
