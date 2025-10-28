@@ -1,5 +1,5 @@
 // /api/config.js
-export const config = { runtime: 'nodejs18.x' }; // ← Edge → Node.js に変更！
+export const config = { runtime: 'nodejs' }; // ← これが正解（'nodejs18.x' ではなく 'nodejs'）
 
 import { put, list } from '@vercel/blob';
 
@@ -17,12 +17,16 @@ async function readConfigFromBlob() {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    // ない場合はデフォルトで /images/hero-desktop.png を返す
     const current = (await readConfigFromBlob()) ?? { heroUrl: '/images/hero-desktop.png' };
     return res.status(200).json(current);
   }
 
   if (req.method === 'POST') {
-    const body = req.body;
+    // 管理画面から { heroUrl: "..." } が来る想定
+    // フィールド名が違う場合でも heroUrl を最終的に作る
+    let body = req.body || {};
+    // Vercel の Node.js Functions は JSON なら自動で req.body に入ります
     const toSave = {
       heroUrl: body.heroUrl || '/images/hero-desktop.png',
     };
