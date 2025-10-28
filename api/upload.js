@@ -1,5 +1,5 @@
 // /api/upload.js
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs" };
 
 import { put, list } from "@vercel/blob/edge";
 
