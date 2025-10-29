@@ -1,9 +1,10 @@
-// src/pages/Admin.jsx
 import { useEffect, useRef, useState } from 'react';
-import { fetchConfig, saveConfig, uploadImage } from '../lib/siteConfig';
+import { fetchConfig, saveConfig, uploadImage, checkPw } from '../lib/siteConfig';
 import { DEFAULT_SITE, loadSite, saveSite } from '../lib/siteStore';
 
 export default function Admin() {
+  const [authed, setAuthed] = useState(false);
+  const [pw, setPw] = useState('');
   const [cfg, setCfg] = useState(DEFAULT_SITE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -13,13 +14,34 @@ export default function Admin() {
   const bgPCRef = useRef(null);
   const bgSPRef = useRef(null);
 
+  // 既に通過していれば復元
   useEffect(() => {
-    setCfg(loadSite());
-    fetchConfig()
-      .then(c => setCfg(prev => ({ ...prev, ...c })))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    if (sessionStorage.getItem('admin_ok') === '1') setAuthed(true);
   }, []);
+
+  // 認証後に設定を読込
+  useEffect(() => {
+    if (!authed) return;
+    (async () => {
+      try {
+        setCfg(loadSite());
+        const c = await fetchConfig();
+        setCfg(prev => ({ ...prev, ...c }));
+      } catch {}
+      setLoading(false);
+    })();
+  }, [authed]);
+
+  async function onLogin(e) {
+    e.preventDefault();
+    const ok = await checkPw(pw);
+    if (ok) {
+      sessionStorage.setItem('admin_ok', '1');
+      setAuthed(true);
+    } else {
+      alert('パスワードが違います');
+    }
+  }
 
   async function handleImage(ref) {
     const f = ref.current?.files?.[0];
@@ -33,17 +55,10 @@ export default function Admin() {
       setSaving(true);
       const next = structuredClone(cfg);
 
-      const hp = await handleImage(heroPCRef);
-      if (hp) next.hero.desktopImage = hp;
-
-      const hs = await handleImage(heroSPRef);
-      if (hs) next.hero.mobileImage = hs;
-
-      const bp = await handleImage(bgPCRef);
-      if (bp) next.background.desktopImage = bp;
-
-      const bs = await handleImage(bgSPRef);
-      if (bs) next.background.mobileImage = bs;
+      const hp = await handleImage(heroPCRef); if (hp) next.hero.desktopImage = hp;
+      const hs = await handleImage(heroSPRef); if (hs) next.hero.mobileImage = hs;
+      const bp = await handleImage(bgPCRef);  if (bp) next.background.desktopImage = bp;
+      const bs = await handleImage(bgSPRef);  if (bs) next.background.mobileImage = bs;
 
       await saveConfig(next);
       saveSite(next);
@@ -57,71 +72,81 @@ export default function Admin() {
     }
   }
 
-  if (loading) return <div style={{ padding: 20 }}>読み込み中…</div>;
+  // 未認証：ログイン
+  if (!authed) {
+    return (
+      <main className="container">
+        <div className="card">
+          <h1 style={{ marginBottom: 12 }}>管理画面ログイン</h1>
+          <form onSubmit={onLogin}>
+            <input
+              type="password"
+              placeholder="パスワード"
+              value={pw}
+              onChange={(e)=>setPw(e.target.value)}
+            />
+            <div style={{ marginTop: 12 }}>
+              <button type="submit">ログイン</button>
+            </div>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  // 読み込み中
+  if (loading) return <div className="container">読み込み中…</div>;
 
   return (
-    <main style={{ maxWidth: 860, margin: '20px auto', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: 22, marginBottom: 16 }}>管理画面</h1>
+    <main className="container">
+      <h1 style={{ marginBottom: 12 }}>管理画面</h1>
 
-      {/* ヒーロー画像 */}
-      <section style={boxStyle}>
-        <h2 style={h2}>トップ画像（ヒーロー）</h2>
-        <div style={grid2}>
+      {/* ヒーロー */}
+      <section className="card">
+        <h2>トップ画像（ヒーロー）</h2>
+        <div className="grid2">
           <div>
             <p>PC用</p>
-            <img src={cfg.hero.desktopImage} alt="" style={preview} />
+            {cfg.hero.desktopImage ? <img src={cfg.hero.desktopImage} className="preview" /> : <div className="placeholder">未設定</div>}
             <input type="file" accept="image/*" ref={heroPCRef} />
           </div>
           <div>
             <p>スマホ用</p>
-            <img src={cfg.hero.mobileImage} alt="" style={preview} />
+            {cfg.hero.mobileImage ? <img src={cfg.hero.mobileImage} className="preview" /> : <div className="placeholder">未設定</div>}
             <input type="file" accept="image/*" ref={heroSPRef} />
           </div>
         </div>
       </section>
 
-      {/* 背景画像 */}
-      <section style={boxStyle}>
-        <h2 style={h2}>背景画像</h2>
-        <div style={grid2}>
+      {/* 背景 */}
+      <section className="card">
+        <h2>背景画像</h2>
+        <div className="grid2">
           <div>
             <p>PC用</p>
-            {cfg.background.desktopImage ? (
-              <img src={cfg.background.desktopImage} alt="" style={preview} />
-            ) : (
-              <div style={placeholder}>未設定</div>
-            )}
+            {cfg.background.desktopImage ? <img src={cfg.background.desktopImage} className="preview" /> : <div className="placeholder">未設定</div>}
             <input type="file" accept="image/*" ref={bgPCRef} />
           </div>
           <div>
             <p>スマホ用</p>
-            {cfg.background.mobileImage ? (
-              <img src={cfg.background.mobileImage} alt="" style={preview} />
-            ) : (
-              <div style={placeholder}>未設定</div>
-            )}
+            {cfg.background.mobileImage ? <img src={cfg.background.mobileImage} className="preview" /> : <div className="placeholder">未設定</div>}
             <input type="file" accept="image/*" ref={bgSPRef} />
           </div>
         </div>
       </section>
 
       {/* SNS */}
-      <section style={boxStyle}>
-        <h2 style={h2}>SNSリンク</h2>
-        <div style={grid2}>
-          {['instagram', 'x', 'line', 'tiktok', 'youtube'].map((key) => (
-            <label key={key} style={label}>
-              {key === 'x' ? 'X（Twitter）' : key.charAt(0).toUpperCase() + key.slice(1)}
+      <section className="card">
+        <h2>SNSリンク</h2>
+        <div className="grid2">
+          {['instagram','x','line','tiktok','youtube'].map(k=>(
+            <label key={k} style={{ display:'grid', gap:6 }}>
+              {k==='x' ? 'X（Twitter）' : k.charAt(0).toUpperCase()+k.slice(1)}
               <input
-                style={input}
-                placeholder={`https://${key}.com/...`}
-                value={cfg.socials[key] || ''}
-                onChange={(e) =>
-                  setCfg((v) => ({
-                    ...v,
-                    socials: { ...v.socials, [key]: e.target.value },
-                  }))
-                }
+                type="text"
+                placeholder={`https://${k}.com/...`}
+                value={cfg.socials[k] || ''}
+                onChange={(e)=>setCfg(v=>({ ...v, socials: { ...v.socials, [k]: e.target.value } }))}
               />
             </label>
           ))}
@@ -129,83 +154,31 @@ export default function Admin() {
       </section>
 
       {/* Google Map */}
-      <section style={boxStyle}>
-        <h2 style={h2}>Google マップ</h2>
-        <label style={label}>
-          埋め込みURL（iframe の src 属性）
+      <section className="card">
+        <h2>Googleマップ</h2>
+        <label style={{ display:'grid', gap:6, marginBottom:12 }}>
+          埋め込みURL（iframe の src）
           <input
-            style={input}
+            type="text"
             placeholder="https://www.google.com/maps/embed?pb=..."
             value={cfg.map.embedSrc || ''}
-            onChange={(e) =>
-              setCfg((v) => ({
-                ...v,
-                map: { ...v.map, embedSrc: e.target.value },
-              }))
-            }
+            onChange={(e)=>setCfg(v=>({ ...v, map: { ...v.map, embedSrc: e.target.value } }))}
           />
         </label>
-        <label style={label}>
+        <label style={{ display:'grid', gap:6 }}>
           住所（任意）
           <input
-            style={input}
-            placeholder="東京都〇〇区..."
+            type="text"
+            placeholder="東京都〇〇区…"
             value={cfg.map.address || ''}
-            onChange={(e) =>
-              setCfg((v) => ({
-                ...v,
-                map: { ...v.map, address: e.target.value },
-              }))
-            }
+            onChange={(e)=>setCfg(v=>({ ...v, map: { ...v.map, address: e.target.value } }))}
           />
         </label>
       </section>
 
-      <div style={{ textAlign: 'right', marginTop: 20 }}>
-        <button onClick={onSave} disabled={saving} style={saveBtn}>
-          {saving ? '保存中…' : '保存'}
-        </button>
+      <div style={{ textAlign:'right', marginTop: 16 }}>
+        <button onClick={onSave} disabled={saving}>{saving ? '保存中…' : '保存'}</button>
       </div>
     </main>
   );
 }
-
-/* --- スタイル定義 --- */
-const boxStyle = {
-  background: '#fff',
-  borderRadius: 12,
-  padding: 16,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-  marginTop: 16,
-};
-const h2 = { fontSize: 18, margin: '4px 0 12px' };
-const grid2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 };
-const preview = {
-  width: '100%',
-  height: 180,
-  objectFit: 'cover',
-  borderRadius: 8,
-  display: 'block',
-  background: '#f4f5f6',
-};
-const placeholder = {
-  ...preview,
-  display: 'grid',
-  placeItems: 'center',
-  color: '#888',
-};
-const label = { display: 'grid', gap: 6, marginBottom: 12 };
-const input = {
-  padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #ddd',
-  fontSize: 16,
-};
-const saveBtn = {
-  background: '#111',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 8,
-  padding: '10px 16px',
-  cursor: 'pointer',
-};
