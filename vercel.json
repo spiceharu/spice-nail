@@ -1,6 +1,10 @@
 {
+  "functions": {
+    "api/*.js": {
+      "runtime": "nodejs"
+    }
+  },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/:path*", "destination": "/" }
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
