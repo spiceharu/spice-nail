@@ -1,8 +1,9 @@
-// /api/pw-check.js
-// Node ランタイムで走る確認用API（値は開示しない）
-export const config = { runtime: 'nodejs' };
+export const config = { runtime: 'edge' };
 
-export default function handler(req, res) {
-  const v = process.env.ADMIN_PASSWORD || '';
-  res.status(200).json({ ok: !!v, len: v.length });
+export default async function handler() {
+  const pw = (process.env.ADMIN_PASSWORD || '').trim();
+  return new Response(
+    JSON.stringify({ ok: pw.length > 0, len: pw.length }),
+    { headers: { 'content-type': 'application/json' } }
+  );
 }
