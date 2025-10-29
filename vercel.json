@@ -1,7 +1,11 @@
 {
+  "version": 2,
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
   "functions": {
-    "api/*.js": {
-      "runtime": "nodejs"
+    "api/**.{js,ts}": {
+      "runtime": "nodejs20.x"
     }
   },
   "rewrites": [
