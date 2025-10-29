@@ -1,20 +1,13 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import Home from './pages/Home.jsx';
+import Admin from './pages/Admin.jsx';
+import './style.css';
 
-import Home from "./pages/Home.jsx";
-import Admin from "./pages/Admin.jsx";
-import Reserve from "./pages/Reserve.jsx";
-import "./style.css";
+function App() {
+  const path = location.pathname;
+  if (path.startsWith('/admin')) return <Admin />;
+  return <Home />;
+}
 
-const router = createBrowserRouter([
-  { path: "/", element: <Home /> },
-  { path: "/reserve", element: <Reserve /> },
-  { path: "/admin", element: <Admin /> }
-]);
-
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <RouterProvider router={router} />
-  </React.StrictMode>
-);
+createRoot(document.getElementById('root')).render(<App />);
