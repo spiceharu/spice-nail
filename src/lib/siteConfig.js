@@ -1,38 +1,27 @@
-// /src/lib/siteConfig.js
-export const DEFAULT_SITE = {
-  backgroundImage: "", // ここに背景画像URL（未設定なら無地）
-  hero: {
-    desktopImage: "/images/hero-desktop.png",
-    mobileImage: "/images/hero-mobile.png"
-  },
-  socials: {
-    youtube: "",
-    tiktok: "",
-    instagram: "",
-    x: ""
-  },
-  map: { placeName: "", address: "", embedSrc: "" },
-  sectionsOrder: ["hero", "sns", "reservation", "map"]
-};
+// src/lib/siteConfig.js
+// 設定の取得/保存（/api/config）
+// 画像アップロード（/api/upload）
 
-export async function fetchConfigSafe() {
-  try {
-    const res = await fetch("/api/config", { cache: "no-store" });
-    if (!res.ok) throw new Error(`GET /api/config ${res.status}`);
-    const json = await res.json();
-    return { ...DEFAULT_SITE, ...json };
-  } catch (e) {
-    console.error("[fetchConfigSafe] fallback:", e?.message || e);
-    return DEFAULT_SITE;
-  }
+export async function fetchConfig() {
+  const res = await fetch('/api/config', { cache: 'no-store' });
+  if (!res.ok) throw new Error('failed to load config');
+  return res.json();
 }
 
-export async function saveConfigSafe(next) {
-  const res = await fetch("/api/config", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(next)
+export async function saveConfig(partial) {
+  const res = await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(partial),
   });
-  if (!res.ok) throw new Error(`POST /api/config ${res.status}`);
+  if (!res.ok) throw new Error('failed to save config');
   return res.json();
+}
+
+export async function uploadImage(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const up = await fetch('/api/upload', { method: 'POST', body: fd });
+  if (!up.ok) throw new Error('upload failed');
+  return up.json(); // { url }
 }
