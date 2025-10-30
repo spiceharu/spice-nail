@@ -1,24 +1,40 @@
 // src/components/Hero.jsx
-export default function Hero({ desktopUrl, mobileUrl }) {
-  // <picture> を使って幅で自動切り替え
+export default function Hero({ pcImage, spImage, bgImage }) {
+  // スマホならspImageを優先
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const src = isMobile ? (spImage || pcImage) : pcImage;
+
   return (
-    <section className="hero" style={{ margin: '0 auto', maxWidth: 1200 }}>
-      <picture>
-        {mobileUrl ? (
-          <source media="(max-width: 767px)" srcSet={mobileUrl} />
-        ) : null}
+    <section
+      style={{
+        marginBottom: 16,
+        backgroundImage: bgImage ? `url(${bgImage})` : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        borderRadius: 16,
+        overflow: "hidden"
+      }}
+    >
+      {src ? (
         <img
-          src={desktopUrl}
+          src={src}
           alt="Top"
-          style={{
-            width: '100%',
-            height: 320,
-            objectFit: 'cover',
-            borderRadius: 12,
-            display: 'block',
-          }}
+          className="hero-img"
+          style={{ height: 320 }}
         />
-      </picture>
+      ) : (
+        <div
+          style={{
+            height: 160,
+            background: "#eee",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          トップ画像を設定してください
+        </div>
+      )}
     </section>
   );
 }
