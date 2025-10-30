@@ -1,13 +1,18 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import Home from './pages/Home.jsx';
-import Admin from './pages/Admin.jsx';
-import './style.css';
+// src/main.jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home.jsx";
+import Admin from "./pages/Admin.jsx";
+import "./style.css";
 
-function App() {
-  const path = location.pathname;
-  if (path.startsWith('/admin')) return <Admin />;
-  return <Home />;
-}
-
-createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/admin" element={<Admin />} />
+      </Routes>
+    </BrowserRouter>
+  </React.StrictMode>
+);
