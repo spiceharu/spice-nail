@@ -1,184 +1,275 @@
-import { useEffect, useRef, useState } from 'react';
-import { fetchConfig, saveConfig, uploadImage, checkPw } from '../lib/siteConfig';
-import { DEFAULT_SITE, loadSite, saveSite } from '../lib/siteStore';
+// src/pages/Admin.jsx
+import React, { useEffect, useState } from "react";
+
+const STORAGE_KEY = "spice-nail-site-v3";
+const PW_KEY = "spice-nail-admin-pass-v1";
+// 初期パスワード（ここで決め打ちできる。あとで管理画面から変えられるようにしてる）
+const DEFAULT_PASSWORD = "5793";
+
+function loadData() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveData(obj) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+}
+
+function loadPassword() {
+  if (typeof window === "undefined") return DEFAULT_PASSWORD;
+  const p = localStorage.getItem(PW_KEY);
+  return p || DEFAULT_PASSWORD;
+}
+
+function savePassword(pw) {
+  localStorage.setItem(PW_KEY, pw);
+}
 
 export default function Admin() {
-  const [authed, setAuthed] = useState(false);
-  const [pw, setPw] = useState('');
-  const [cfg, setCfg] = useState(DEFAULT_SITE);
-  const [loading, setLoading] = useState(true);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [pwInput, setPwInput] = useState("");
+  const [site, setSite] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const heroPCRef = useRef(null);
-  const heroSPRef = useRef(null);
-  const bgPCRef = useRef(null);
-  const bgSPRef = useRef(null);
-
-  // 既に通過していれば復元
+  // 最初にデータ読む
   useEffect(() => {
-    if (sessionStorage.getItem('admin_ok') === '1') setAuthed(true);
+    const d = loadData();
+    setSite(
+      d || {
+        heroPc: "",
+        heroSp: "",
+        bgImage: "",
+        sns: [],
+        map: { src: "", address: "" }
+      }
+    );
   }, []);
 
-  // 認証後に設定を読込
-  useEffect(() => {
-    if (!authed) return;
-    (async () => {
-      try {
-        setCfg(loadSite());
-        const c = await fetchConfig();
-        setCfg(prev => ({ ...prev, ...c }));
-      } catch {}
-      setLoading(false);
-    })();
-  }, [authed]);
-
-  async function onLogin(e) {
+  // ログイン
+  function handleLogin(e) {
     e.preventDefault();
-    const ok = await checkPw(pw);
-    if (ok) {
-      sessionStorage.setItem('admin_ok', '1');
-      setAuthed(true);
+    const realPw = loadPassword();
+    if (pwInput === realPw) {
+      setLoggedIn(true);
     } else {
-      alert('パスワードが違います');
+      alert("パスワードが違います");
     }
   }
 
-  async function handleImage(ref) {
-    const f = ref.current?.files?.[0];
-    if (!f) return null;
-    const up = await uploadImage(f);
-    return up.url;
-  }
-
-  async function onSave() {
-    try {
-      setSaving(true);
-      const next = structuredClone(cfg);
-
-      const hp = await handleImage(heroPCRef); if (hp) next.hero.desktopImage = hp;
-      const hs = await handleImage(heroSPRef); if (hs) next.hero.mobileImage = hs;
-      const bp = await handleImage(bgPCRef);  if (bp) next.background.desktopImage = bp;
-      const bs = await handleImage(bgSPRef);  if (bs) next.background.mobileImage = bs;
-
-      await saveConfig(next);
-      saveSite(next);
-      setCfg(next);
-      alert('保存しました！');
-    } catch (e) {
-      console.error(e);
-      alert('保存に失敗しました…');
-    } finally {
+  // 保存
+  function handleSave() {
+    setSaving(true);
+    saveData(site);
+    setTimeout(() => {
       setSaving(false);
-    }
+      alert("保存しました（ブラウザに保存）");
+    }, 300);
   }
 
-  // 未認証：ログイン
-  if (!authed) {
+  // SNS追加
+  function addSNS() {
+    setSite((prev) => ({
+      ...prev,
+      sns: [...(prev.sns || []), { name: "", url: "" }]
+    }));
+  }
+
+  function updateSNS(index, field, value) {
+    setSite((prev) => {
+      const next = [...(prev.sns || [])];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, sns: next };
+    });
+  }
+
+  function deleteSNS(index) {
+    setSite((prev) => {
+      const next = [...(prev.sns || [])];
+      next.splice(index, 1);
+      return { ...prev, sns: next };
+    });
+  }
+
+  // パスワード変更
+  function handleChangePassword() {
+    const newPw = prompt("新しいパスワードを入力してください（空欄は不可）");
+    if (!newPw) return;
+    savePassword(newPw);
+    alert("パスワードを変更しました");
+  }
+
+  if (!loggedIn) {
     return (
-      <main className="container">
-        <div className="card">
-          <h1 style={{ marginBottom: 12 }}>管理画面ログイン</h1>
-          <form onSubmit={onLogin}>
-            <input
-              type="password"
-              placeholder="パスワード"
-              value={pw}
-              onChange={(e)=>setPw(e.target.value)}
-            />
-            <div style={{ marginTop: 12 }}>
-              <button type="submit">ログイン</button>
-            </div>
-          </form>
-        </div>
-      </main>
+      <div className="login-box">
+        <h2>管理画面ログイン</h2>
+        <p style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>
+          初期パスワードは「5793」です
+        </p>
+        <form onSubmit={handleLogin}>
+          <input
+            type="password"
+            value={pwInput}
+            onChange={(e) => setPwInput(e.target.value)}
+            placeholder="パスワード"
+            style={{
+              width: "100%",
+              padding: 10,
+              borderRadius: 8,
+              border: "1px solid #ddd",
+              marginBottom: 12
+            }}
+          />
+          <button className="button" style={{ width: "100%" }}>
+            ログイン
+          </button>
+        </form>
+      </div>
     );
   }
 
-  // 読み込み中
-  if (loading) return <div className="container">読み込み中…</div>;
+  if (!site) return <div className="app-shell">読み込み中...</div>;
 
   return (
-    <main className="container">
-      <h1 style={{ marginBottom: 12 }}>管理画面</h1>
+    <div className="app-shell admin-wrap">
+      <h1>管理画面</h1>
 
-      {/* ヒーロー */}
-      <section className="card">
-        <h2>トップ画像（ヒーロー）</h2>
-        <div className="grid2">
-          <div>
-            <p>PC用</p>
-            {cfg.hero.desktopImage ? <img src={cfg.hero.desktopImage} className="preview" /> : <div className="placeholder">未設定</div>}
-            <input type="file" accept="image/*" ref={heroPCRef} />
-          </div>
-          <div>
-            <p>スマホ用</p>
-            {cfg.hero.mobileImage ? <img src={cfg.hero.mobileImage} className="preview" /> : <div className="placeholder">未設定</div>}
-            <input type="file" accept="image/*" ref={heroSPRef} />
-          </div>
+      {/* トップ画像 */}
+      <div className="card">
+        <h2>トップ画像（PC）</h2>
+        <div className="input-row">
+          <label>画像URL（例：https://.../hero-desktop.png）</label>
+          <input
+            value={site.heroPc || ""}
+            onChange={(e) => setSite({ ...site, heroPc: e.target.value })}
+            placeholder="PC用トップ画像URL"
+          />
         </div>
-      </section>
+        {site.heroPc ? (
+          <img src={site.heroPc} alt="pc" className="preview-img" />
+        ) : null}
+      </div>
 
-      {/* 背景 */}
-      <section className="card">
+      <div className="card">
+        <h2>トップ画像（スマホ）</h2>
+        <div className="input-row">
+          <label>画像URL（例：https://.../hero-mobile.png）</label>
+          <input
+            value={site.heroSp || ""}
+            onChange={(e) => setSite({ ...site, heroSp: e.target.value })}
+            placeholder="スマホ用トップ画像URL"
+          />
+        </div>
+        {site.heroSp ? (
+          <img src={site.heroSp} alt="sp" className="preview-img" />
+        ) : null}
+      </div>
+
+      {/* 背景画像 */}
+      <div className="card">
         <h2>背景画像</h2>
-        <div className="grid2">
-          <div>
-            <p>PC用</p>
-            {cfg.background.desktopImage ? <img src={cfg.background.desktopImage} className="preview" /> : <div className="placeholder">未設定</div>}
-            <input type="file" accept="image/*" ref={bgPCRef} />
-          </div>
-          <div>
-            <p>スマホ用</p>
-            {cfg.background.mobileImage ? <img src={cfg.background.mobileImage} className="preview" /> : <div className="placeholder">未設定</div>}
-            <input type="file" accept="image/*" ref={bgSPRef} />
-          </div>
+        <div className="input-row">
+          <label>画像URL（省略可）</label>
+          <input
+            value={site.bgImage || ""}
+            onChange={(e) => setSite({ ...site, bgImage: e.target.value })}
+            placeholder="背景にしたい画像のURL"
+          />
         </div>
-      </section>
+        <div
+          className="bg-preview"
+          style={{ backgroundImage: site.bgImage ? `url(${site.bgImage})` : "" }}
+        ></div>
+      </div>
 
       {/* SNS */}
-      <section className="card">
+      <div className="card">
         <h2>SNSリンク</h2>
-        <div className="grid2">
-          {['instagram','x','line','tiktok','youtube'].map(k=>(
-            <label key={k} style={{ display:'grid', gap:6 }}>
-              {k==='x' ? 'X（Twitter）' : k.charAt(0).toUpperCase()+k.slice(1)}
-              <input
-                type="text"
-                placeholder={`https://${k}.com/...`}
-                value={cfg.socials[k] || ''}
-                onChange={(e)=>setCfg(v=>({ ...v, socials: { ...v.socials, [k]: e.target.value } }))}
-              />
-            </label>
-          ))}
-        </div>
-      </section>
-
-      {/* Google Map */}
-      <section className="card">
-        <h2>Googleマップ</h2>
-        <label style={{ display:'grid', gap:6, marginBottom:12 }}>
-          埋め込みURL（iframe の src）
-          <input
-            type="text"
-            placeholder="https://www.google.com/maps/embed?pb=..."
-            value={cfg.map.embedSrc || ''}
-            onChange={(e)=>setCfg(v=>({ ...v, map: { ...v.map, embedSrc: e.target.value } }))}
-          />
-        </label>
-        <label style={{ display:'grid', gap:6 }}>
-          住所（任意）
-          <input
-            type="text"
-            placeholder="東京都〇〇区…"
-            value={cfg.map.address || ''}
-            onChange={(e)=>setCfg(v=>({ ...v, map: { ...v.map, address: e.target.value } }))}
-          />
-        </label>
-      </section>
-
-      <div style={{ textAlign:'right', marginTop: 16 }}>
-        <button onClick={onSave} disabled={saving}>{saving ? '保存中…' : '保存'}</button>
+        {(site.sns || []).map((s, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              gap: 8,
+              marginBottom: 8,
+              alignItems: "center"
+            }}
+          >
+            <input
+              value={s.name}
+              onChange={(e) => updateSNS(i, "name", e.target.value)}
+              placeholder="例）Instagram"
+              style={{ flex: "0 0 140px" }}
+            />
+            <input
+              value={s.url}
+              onChange={(e) => updateSNS(i, "url", e.target.value)}
+              placeholder="https://..."
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              className="button"
+              onClick={() => deleteSNS(i)}
+            >
+              削除
+            </button>
+          </div>
+        ))}
+        <button type="button" className="button" onClick={addSNS}>
+          ＋ SNSを追加
+        </button>
       </div>
-    </main>
+
+      {/* マップ */}
+      <div className="card">
+        <h2>Googleマップ</h2>
+        <div className="input-row">
+          <label>埋め込みURL（iframeのsrcだけ）</label>
+          <input
+            value={site.map?.src || ""}
+            onChange={(e) =>
+              setSite({ ...site, map: { ...(site.map || {}), src: e.target.value } })
+            }
+            placeholder="https://www.google.com/maps/embed?..."
+          />
+        </div>
+        <div className="input-row">
+          <label>住所テキスト</label>
+          <input
+            value={site.map?.address || ""}
+            onChange={(e) =>
+              setSite({
+                ...site,
+                map: { ...(site.map || {}), address: e.target.value }
+              })
+            }
+            placeholder="千葉県〇〇市..."
+          />
+        </div>
+      </div>
+
+      {/* パスワード */}
+      <div className="card">
+        <h2>管理画面パスワード</h2>
+        <p style={{ fontSize: 13, marginBottom: 12 }}>
+          今ログインしているブラウザにだけ保存されます。別のPCではまた初期パスワードになります。
+        </p>
+        <button className="button" onClick={handleChangePassword}>
+          パスワードを変更する
+        </button>
+      </div>
+
+      <div style={{ textAlign: "right", marginBottom: 50 }}>
+        <button className="button" onClick={handleSave} disabled={saving}>
+          {saving ? "保存中..." : "保存する"}
+        </button>
+      </div>
+    </div>
   );
 }
