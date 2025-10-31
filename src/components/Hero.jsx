@@ -1,7 +1,7 @@
 // src/components/Hero.jsx
 export default function Hero({ pcImage, spImage, bgImage }) {
-  // スマホならspImageを優先
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const isMobile =
+    typeof window !== "undefined" && window.innerWidth < 768;
   const src = isMobile ? (spImage || pcImage) : pcImage;
 
   return (
