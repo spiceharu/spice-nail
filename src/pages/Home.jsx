@@ -1,9 +1,10 @@
 // src/pages/Home.jsx
+import { useEffect, useState } from "react";
 import Hero from "../components/Hero.jsx";
 import BannerStrip from "../components/BannerStrip.jsx";
 import MapEmbed from "../components/MapEmbed.jsx";
 
-const KEY = "spice-nail-site-v3";
+const KEY = "spice-nail-site-v4";
 
 function loadSite() {
   if (typeof window === "undefined") return null;
@@ -17,65 +18,88 @@ function loadSite() {
 }
 
 export default function Home() {
-  const site =
-    loadSite() || {
-      heroPc: "",
-      heroSp: "",
-      bgImage: "",
-      banners: [],
-      sns: [],
-      map: { src: "", address: "" }
+  const [site, setSite] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const d = loadSite();
+    setSite(
+      d || {
+        heroPc: "",
+        heroSp: "",
+        bgPc: "",
+        bgSp: "",
+        banners: [],
+        sns: [],
+        map: { src: "", address: "" }
+      }
+    );
+    const check = () => {
+      setIsMobile(window.innerWidth < 768);
     };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  if (!site) return <div className="app-shell">読み込み中…</div>;
+
+  const bg = isMobile ? site.bgSp || site.bgPc : site.bgPc || site.bgSp;
 
   return (
-    <div className="app-shell">
-      <Hero
-        pcImage={site.heroPc}
-        spImage={site.heroSp}
-        bgImage={site.bgImage}
-      />
+    <div
+      style={{
+        backgroundImage: bg ? `url(${bg})` : "none",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        minHeight: "100vh"
+      }}
+    >
+      <div className="app-shell">
+        <Hero
+          pcImage={site.heroPc}
+          spImage={site.heroSp}
+        />
 
-      {/* バナー（横長3:1を流すやつ想定） */}
-      <BannerStrip banners={site.banners || []} />
+        <BannerStrip banners={site.banners || []} />
 
-      {/* SNS */}
-      <div className="card">
-        <div className="section-title">SNS</div>
-        {site.sns && site.sns.length ? (
-          <div className="sns-grid">
-            {site.sns.map((s, i) => (
-              <a
-                key={i}
-                href={s.url}
-                target="_blank"
-                rel="noreferrer"
-                className="sns-item"
-              >
-                <div style={{ fontWeight: 600 }}>{s.name}</div>
-                <div style={{ fontSize: 12, color: "#777" }}>{s.url}</div>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p>各種SNSリンクをここに並べられます。</p>
-        )}
+        {/* SNS */}
+        <div className="card">
+          <div className="section-title">SNS</div>
+          {site.sns && site.sns.length ? (
+            <div className="sns-grid">
+              {site.sns.map((s, i) => (
+                <a
+                  key={i}
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="sns-item"
+                >
+                  <div style={{ fontWeight: 600 }}>{s.name}</div>
+                  <div style={{ fontSize: 12, color: "#777" }}>{s.url}</div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p>各種SNSリンクをここに並べられます。</p>
+          )}
+        </div>
+
+        {/* 予約（ダミー） */}
+        <div className="card">
+          <div className="section-title">予約について</div>
+          <p>LINE / DM / 電話からご予約ください。予約フォームは後で実装します。</p>
+          <p style={{ fontSize: 13, color: "#888" }}>
+            営業時間 10:00-19:00 / 火曜定休
+          </p>
+        </div>
+
+        {/* マップ */}
+        <MapEmbed src={site.map?.src} address={site.map?.address} />
+
+        <div className="footer">© Spice Nail</div>
       </div>
-
-      {/* 予約（とりあえず案内だけ） */}
-      <div className="card">
-        <div className="section-title">予約について</div>
-        <p>
-          予約フォームは後で差し替えます。現在は仮案内です。LINE/DM/電話でご連絡ください。
-        </p>
-        <p style={{ fontSize: 13, color: "#888" }}>
-          営業時間 10:00-19:00 / 火曜定休
-        </p>
-      </div>
-
-      {/* MAP */}
-      <MapEmbed src={site.map?.src} address={site.map?.address} />
-
-      <div className="footer">© Spice Nail</div>
     </div>
   );
 }
