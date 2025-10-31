@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 
 const STORAGE_KEY = "spice-nail-site-v3";
 const PW_KEY = "spice-nail-admin-pass-v1";
-// 初期パスワード（ここで決め打ちできる。あとで管理画面から変えられるようにしてる）
 const DEFAULT_PASSWORD = "5793";
 
 function loadData() {
@@ -37,7 +36,7 @@ export default function Admin() {
   const [site, setSite] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // 最初にデータ読む
+  // 初期データ読み込み
   useEffect(() => {
     const d = loadData();
     setSite(
@@ -45,13 +44,14 @@ export default function Admin() {
         heroPc: "",
         heroSp: "",
         bgImage: "",
+        banners: [],
         sns: [],
         map: { src: "", address: "" }
       }
     );
   }, []);
 
-  // ログイン
+  // ログイン処理
   function handleLogin(e) {
     e.preventDefault();
     const realPw = loadPassword();
@@ -62,14 +62,14 @@ export default function Admin() {
     }
   }
 
-  // 保存
+  // 保存処理
   function handleSave() {
     setSaving(true);
     saveData(site);
     setTimeout(() => {
       setSaving(false);
-      alert("保存しました（ブラウザに保存）");
-    }, 300);
+      alert("保存しました（このブラウザに保存）");
+    }, 200);
   }
 
   // SNS追加
@@ -96,14 +96,39 @@ export default function Admin() {
     });
   }
 
+  // バナー追加（横長3:1の画像URLを流す用）
+  function addBanner() {
+    setSite((prev) => ({
+      ...prev,
+      banners: [...(prev.banners || []), ""]
+    }));
+  }
+
+  function updateBanner(i, value) {
+    setSite((prev) => {
+      const arr = [...(prev.banners || [])];
+      arr[i] = value;
+      return { ...prev, banners: arr };
+    });
+  }
+
+  function deleteBanner(i) {
+    setSite((prev) => {
+      const arr = [...(prev.banners || [])];
+      arr.splice(i, 1);
+      return { ...prev, banners: arr };
+    });
+  }
+
   // パスワード変更
   function handleChangePassword() {
     const newPw = prompt("新しいパスワードを入力してください（空欄は不可）");
     if (!newPw) return;
     savePassword(newPw);
-    alert("パスワードを変更しました");
+    alert("パスワードを変更しました。次回からそのパスワードでログインしてください。");
   }
 
+  // 未ログイン
   if (!loggedIn) {
     return (
       <div className="login-box">
@@ -133,21 +158,22 @@ export default function Admin() {
     );
   }
 
-  if (!site) return <div className="app-shell">読み込み中...</div>;
+  // 読み込み中
+  if (!site) return <div className="app-shell">読み込み中…</div>;
 
   return (
     <div className="app-shell admin-wrap">
       <h1>管理画面</h1>
 
-      {/* トップ画像 */}
+      {/* トップ画像 PC */}
       <div className="card">
         <h2>トップ画像（PC）</h2>
         <div className="input-row">
-          <label>画像URL（例：https://.../hero-desktop.png）</label>
+          <label>画像URL</label>
           <input
             value={site.heroPc || ""}
             onChange={(e) => setSite({ ...site, heroPc: e.target.value })}
-            placeholder="PC用トップ画像URL"
+            placeholder="https://.../hero-desktop.png"
           />
         </div>
         {site.heroPc ? (
@@ -155,14 +181,15 @@ export default function Admin() {
         ) : null}
       </div>
 
+      {/* トップ画像 SP */}
       <div className="card">
         <h2>トップ画像（スマホ）</h2>
         <div className="input-row">
-          <label>画像URL（例：https://.../hero-mobile.png）</label>
+          <label>画像URL</label>
           <input
             value={site.heroSp || ""}
             onChange={(e) => setSite({ ...site, heroSp: e.target.value })}
-            placeholder="スマホ用トップ画像URL"
+            placeholder="https://.../hero-mobile.png"
           />
         </div>
         {site.heroSp ? (
@@ -174,17 +201,45 @@ export default function Admin() {
       <div className="card">
         <h2>背景画像</h2>
         <div className="input-row">
-          <label>画像URL（省略可）</label>
+          <label>画像URL（ページ全体の背景）</label>
           <input
             value={site.bgImage || ""}
             onChange={(e) => setSite({ ...site, bgImage: e.target.value })}
-            placeholder="背景にしたい画像のURL"
+            placeholder="https://.../background.jpg"
           />
         </div>
         <div
           className="bg-preview"
           style={{ backgroundImage: site.bgImage ? `url(${site.bgImage})` : "" }}
         ></div>
+      </div>
+
+      {/* スライドバナー（横長） */}
+      <div className="card">
+        <h2>スライドバナー（横長3:1くらい）</h2>
+        {(site.banners || []).map((b, i) => (
+          <div key={i} className="input-row">
+            <label>バナー画像URL #{i + 1}</label>
+            <input
+              value={b}
+              onChange={(e) => updateBanner(i, e.target.value)}
+              placeholder="https://.../banner1.jpg"
+            />
+            {b ? (
+              <img src={b} alt="" className="preview-img" />
+            ) : null}
+            <button
+              type="button"
+              className="button"
+              onClick={() => deleteBanner(i)}
+            >
+              このバナーを削除
+            </button>
+          </div>
+        ))}
+        <button type="button" className="button" onClick={addBanner}>
+          ＋ バナーを追加
+        </button>
       </div>
 
       {/* SNS */}
@@ -226,7 +281,7 @@ export default function Admin() {
         </button>
       </div>
 
-      {/* マップ */}
+      {/* Googleマップ */}
       <div className="card">
         <h2>Googleマップ</h2>
         <div className="input-row">
@@ -234,7 +289,10 @@ export default function Admin() {
           <input
             value={site.map?.src || ""}
             onChange={(e) =>
-              setSite({ ...site, map: { ...(site.map || {}), src: e.target.value } })
+              setSite({
+                ...site,
+                map: { ...(site.map || {}), src: e.target.value }
+              })
             }
             placeholder="https://www.google.com/maps/embed?..."
           />
@@ -249,16 +307,16 @@ export default function Admin() {
                 map: { ...(site.map || {}), address: e.target.value }
               })
             }
-            placeholder="千葉県〇〇市..."
+            placeholder="千葉県〇〇市中央区…"
           />
         </div>
       </div>
 
       {/* パスワード */}
       <div className="card">
-        <h2>管理画面パスワード</h2>
+        <h2>管理パスワード</h2>
         <p style={{ fontSize: 13, marginBottom: 12 }}>
-          今ログインしているブラウザにだけ保存されます。別のPCではまた初期パスワードになります。
+          今ログインしているブラウザに保存されます。別の端末では初期パスワードになることがあります。
         </p>
         <button className="button" onClick={handleChangePassword}>
           パスワードを変更する
