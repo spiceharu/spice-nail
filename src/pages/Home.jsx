@@ -19,9 +19,10 @@ function loadSite() {
 export default function Home() {
   const site =
     loadSite() || {
-      heroPc: "/public/images/hero-desktop.png",
-      heroSp: "/public/images/hero-mobile.png",
+      heroPc: "",
+      heroSp: "",
       bgImage: "",
+      banners: [],
       sns: [],
       map: { src: "", address: "" }
     };
@@ -33,6 +34,9 @@ export default function Home() {
         spImage={site.heroSp}
         bgImage={site.bgImage}
       />
+
+      {/* バナー（横長3:1を流すやつ想定） */}
+      <BannerStrip banners={site.banners || []} />
 
       {/* SNS */}
       <div className="card">
@@ -57,7 +61,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* 予約 */}
+      {/* 予約（とりあえず案内だけ） */}
       <div className="card">
         <div className="section-title">予約について</div>
         <p>
@@ -68,7 +72,7 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Map */}
+      {/* MAP */}
       <MapEmbed src={site.map?.src} address={site.map?.address} />
 
       <div className="footer">© Spice Nail</div>
