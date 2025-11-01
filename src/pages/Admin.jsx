@@ -5,7 +5,7 @@ const STORAGE_KEY = "spice-nail-site-v4";
 const PW_KEY = "spice-nail-admin-pass-v1";
 const DEFAULT_PASSWORD = "5793";
 
-// 汎用：localStorage 読み込み
+// localStorage 読み込み
 function loadData() {
   if (typeof window === "undefined") return null;
   try {
@@ -17,12 +17,12 @@ function loadData() {
   }
 }
 
-// 汎用：localStorage 保存
+// localStorage 保存
 function saveData(obj) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
 }
 
-// パスワード
+// パス読み込み/保存
 function loadPassword() {
   if (typeof window === "undefined") return DEFAULT_PASSWORD;
   return localStorage.getItem(PW_KEY) || DEFAULT_PASSWORD;
@@ -31,7 +31,7 @@ function savePassword(pw) {
   localStorage.setItem(PW_KEY, pw);
 }
 
-// ファイル→base64
+// ファイル→Base64
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const rd = new FileReader();
@@ -41,7 +41,7 @@ function fileToDataUrl(file) {
   });
 }
 
-// アップロードボックス（ドラッグ＆ドロップ＋プレビュー＋推奨サイズ）
+// アップロードボックス
 function UploadBox({ id, label, hint, value, onFile, height = 180 }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -64,11 +64,7 @@ function UploadBox({ id, label, hint, value, onFile, height = 180 }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <p style={{ marginBottom: 4, fontWeight: 600 }}>{label}</p>
-      {hint ? (
-        <p style={{ margin: 0, marginBottom: 6, fontSize: 12, color: "#888" }}>
-          {hint}
-        </p>
-      ) : null}
+      {hint ? <p style={{ margin: 0, marginBottom: 6, fontSize: 12, color: "#888" }}>{hint}</p> : null}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -124,7 +120,8 @@ export default function Admin() {
   const [pwInput, setPwInput] = useState("");
   const [site, setSite] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState("images"); // images | sns | map | settings
+  const [tab, setTab] = useState("images");
+  const [importText, setImportText] = useState("");
 
   // 初期ロード
   useEffect(() => {
@@ -142,7 +139,7 @@ export default function Admin() {
     );
   }, []);
 
-  // ログイン処理
+  // ログイン
   function handleLogin(e) {
     e.preventDefault();
     const realPw = loadPassword();
@@ -215,7 +212,31 @@ export default function Admin() {
     alert("パスワードを変更しました。次回から新パスワードでログインしてください。");
   }
 
-  // 未ログイン
+  // 設定をコピー（エクスポート）
+  function handleExport() {
+    const json = JSON.stringify(site, null, 2);
+    navigator.clipboard?.writeText(json).catch(() => {});
+    setImportText(json);
+    alert("設定をコピーしました。スマホに送って貼り付けてください。");
+  }
+
+  // 設定を貼り付けて保存（インポート）
+  function handleImport() {
+    if (!importText.trim()) {
+      alert("貼り付ける設定がありません");
+      return;
+    }
+    try {
+      const obj = JSON.parse(importText);
+      setSite(obj);
+      saveData(obj);
+      alert("設定を読み込みました！");
+    } catch (e) {
+      alert("JSONの形式が違います");
+    }
+  }
+
+  // 未ログイン画面
   if (!loggedIn) {
     return (
       <div className="login-box">
@@ -283,7 +304,7 @@ export default function Admin() {
         </button>
       </div>
 
-      {/* ---------- 画像タブ ---------- */}
+      {/* 画像タブ */}
       {tab === "images" && (
         <>
           <div className="card">
@@ -297,7 +318,6 @@ export default function Admin() {
               height={220}
             />
           </div>
-
           <div className="card">
             <h2>トップ画像（スマホ）</h2>
             <UploadBox
@@ -309,7 +329,6 @@ export default function Admin() {
               height={220}
             />
           </div>
-
           <div className="card">
             <h2>背景画像（PC）</h2>
             <UploadBox
@@ -321,7 +340,6 @@ export default function Admin() {
               height={140}
             />
           </div>
-
           <div className="card">
             <h2>背景画像（スマホ）</h2>
             <UploadBox
@@ -333,9 +351,8 @@ export default function Admin() {
               height={140}
             />
           </div>
-
           <div className="card">
-            <h2>スライドバナー（横長3:1くらい）</h2>
+            <h2>スライドバナー（横長3:1）</h2>
             {(site.banners || []).map((b, i) => (
               <div key={i} style={{ marginBottom: 12 }}>
                 <UploadBox
@@ -362,7 +379,7 @@ export default function Admin() {
         </>
       )}
 
-      {/* ---------- SNSタブ ---------- */}
+      {/* SNSタブ */}
       {tab === "sns" && (
         <div className="card">
           <h2>SNSリンク</h2>
@@ -380,13 +397,23 @@ export default function Admin() {
                 value={s.name}
                 onChange={(e) => updateSNS(i, "name", e.target.value)}
                 placeholder="例）Instagram"
-                style={{ flex: "0 0 140px", padding: 8, borderRadius: 8, border: "1px solid #ddd" }}
+                style={{
+                  flex: "0 0 140px",
+                  padding: 8,
+                  borderRadius: 8,
+                  border: "1px solid #ddd"
+                }}
               />
               <input
                 value={s.url}
                 onChange={(e) => updateSNS(i, "url", e.target.value)}
                 placeholder="https://..."
-                style={{ flex: 1, padding: 8, borderRadius: 8, border: "1px solid #ddd" }}
+                style={{
+                  flex: 1,
+                  padding: 8,
+                  borderRadius: 8,
+                  border: "1px solid #ddd"
+                }}
               />
               <button
                 type="button"
@@ -403,7 +430,7 @@ export default function Admin() {
         </div>
       )}
 
-      {/* ---------- マップタブ ---------- */}
+      {/* マップタブ */}
       {tab === "map" && (
         <div className="card">
           <h2>Googleマップ</h2>
@@ -436,19 +463,42 @@ export default function Admin() {
         </div>
       )}
 
-      {/* ---------- その他タブ ---------- */}
+      {/* その他タブ */}
       {tab === "settings" && (
         <div className="card">
           <h2>その他設定</h2>
-          <p style={{ fontSize: 13 }}>
-            この管理画面のパスワードを変更できます。
+          <p style={{ fontSize: 13, marginBottom: 12 }}>
+            PCで作った設定をスマホにコピーするときは下の「設定をコピー」を押して、スマホの管理画面で貼り付けてください。
+          </p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button className="button" onClick={handleExport}>
+              設定をコピー（エクスポート）
+            </button>
+            <button className="button" onClick={handleImport}>
+              貼り付けて保存（インポート）
+            </button>
+          </div>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder="ここにPCでコピーしたJSONを貼り付け"
+            style={{
+              width: "100%",
+              minHeight: 140,
+              borderRadius: 12,
+              border: "1px solid #ddd",
+              padding: 8,
+              fontFamily: "monospace",
+              fontSize: 12
+            }}
+          />
+          <hr style={{ margin: "20px 0" }} />
+          <p style={{ fontSize: 13, marginBottom: 12 }}>
+            管理画面パスワードの変更
           </p>
           <button className="button" onClick={handleChangePassword}>
             パスワードを変更する
           </button>
-          <p style={{ fontSize: 12, color: "#888", marginTop: 12 }}>
-            ※ このパスワードはこのブラウザのローカルに保存されます。
-          </p>
         </div>
       )}
 
