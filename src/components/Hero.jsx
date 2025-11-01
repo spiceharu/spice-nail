@@ -1,18 +1,13 @@
 // src/components/Hero.jsx
-export default function Hero({ pcImage, spImage }) {
+export default function Hero({ pc, sp }) {
   const isMobile =
     typeof window !== "undefined" && window.innerWidth < 768;
-  const src = isMobile ? (spImage || pcImage) : pcImage;
+  const src = isMobile ? (sp || pc) : (pc || sp);
 
   return (
     <section style={{ marginBottom: 16, borderRadius: 16, overflow: "hidden" }}>
       {src ? (
-        <img
-          src={src}
-          alt="Top"
-          className="hero-img"
-          style={{ height: 320 }}
-        />
+        <img src={src} alt="Top" className="hero-img" style={{ height: 320 }} />
       ) : (
         <div
           style={{
