@@ -1,50 +1,39 @@
 // src/pages/Home.jsx
 import { useEffect, useState } from "react";
+import { fetchConfig } from "../lib/siteConfig.js";
+import { loadSite, saveSite, DEFAULT_SITE } from "../lib/siteStore.js";
 import Hero from "../components/Hero.jsx";
 import BannerStrip from "../components/BannerStrip.jsx";
 import MapEmbed from "../components/MapEmbed.jsx";
 
-const KEY = "spice-nail-site-v4";
-
-function loadSite() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
 export default function Home() {
-  const [site, setSite] = useState(null);
+  const [site, setSite] = useState(DEFAULT_SITE);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const d = loadSite();
-    setSite(
-      d || {
-        heroPc: "",
-        heroSp: "",
-        bgPc: "",
-        bgSp: "",
-        banners: [],
-        sns: [],
-        map: { src: "", address: "" }
-      }
-    );
-    const check = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    // まずはキャッシュを読み込む
+    const cached = loadSite();
+    setSite(cached);
+
+    // ついでにサーバーから本物を取る
+    fetchConfig()
+      .then((data) => {
+        setSite(data);
+        saveSite(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  if (!site) return <div className="app-shell">読み込み中…</div>;
-
-  const bg = isMobile ? site.bgSp || site.bgPc : site.bgPc || site.bgSp;
+  const bg = isMobile
+    ? site.background?.sp || site.background?.pc
+    : site.background?.pc || site.background?.sp;
 
   return (
     <div
@@ -56,19 +45,16 @@ export default function Home() {
       }}
     >
       <div className="app-shell">
-        <Hero
-          pcImage={site.heroPc}
-          spImage={site.heroSp}
-        />
+        <Hero pc={site.hero?.pc} sp={site.hero?.sp} />
 
-        <BannerStrip banners={site.banners || []} />
+        <BannerStrip banners={site.banners} />
 
         {/* SNS */}
         <div className="card">
           <div className="section-title">SNS</div>
-          {site.sns && site.sns.length ? (
+          {site.socials && site.socials.length ? (
             <div className="sns-grid">
-              {site.sns.map((s, i) => (
+              {site.socials.map((s, i) => (
                 <a
                   key={i}
                   href={s.url}
@@ -86,17 +72,13 @@ export default function Home() {
           )}
         </div>
 
-        {/* 予約（ダミー） */}
+        {/* 予約ダミー */}
         <div className="card">
           <div className="section-title">予約について</div>
-          <p>LINE / DM / 電話からご予約ください。予約フォームは後で実装します。</p>
-          <p style={{ fontSize: 13, color: "#888" }}>
-            営業時間 10:00-19:00 / 火曜定休
-          </p>
+          <p>予約フォームは後で実装予定です。LINE / DM / 電話からご連絡ください。</p>
         </div>
 
-        {/* マップ */}
-        <MapEmbed src={site.map?.src} address={site.map?.address} />
+        <MapEmbed src={site.map?.embedSrc} address={site.map?.address} />
 
         <div className="footer">© Spice Nail</div>
       </div>
