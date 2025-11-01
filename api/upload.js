@@ -10,8 +10,9 @@ export default async function handler(req) {
 
   const form = await req.formData();
   const file = form.get('file');
+
   if (!file || typeof file === 'string') {
-    return new Response(JSON.stringify({ error: 'file not found' }), {
+    return new Response(JSON.stringify({ error: 'file missing' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
