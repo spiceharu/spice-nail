@@ -242,7 +242,7 @@ export default function Admin() {
       <div className="login-box">
         <h2>管理画面ログイン</h2>
         <p style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>
-          初期パスワードは「5793」です
+          パスワードを入力してください
         </p>
         <form onSubmit={handleLogin}>
           <input
