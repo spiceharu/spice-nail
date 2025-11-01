@@ -5,10 +5,12 @@ export const config = { runtime: 'nodejs' };
 
 const KEY = 'config/site.json';
 
-async function readConfigFromBlob() {
+async function readConfig() {
+  // config/ 以下の一覧を取る
   const blobs = await list({ prefix: 'config/' });
   const found = blobs.blobs.find(b => b.pathname === KEY);
   if (!found) return null;
+
   const res = await fetch(found.url, { cache: 'no-store' });
   if (!res.ok) return null;
   return await res.json();
@@ -16,25 +18,31 @@ async function readConfigFromBlob() {
 
 export default async function handler(req) {
   if (req.method === 'GET') {
-    const cur = (await readConfigFromBlob()) ?? {
-      hero: { desktopImage: '', mobileImage: '' },
-      background: { desktopImage: '', mobileImage: '' },
-      socials: { instagram: '', x: '', line: '', tiktok: '', youtube: '' },
+    // なかったらデフォルト返す
+    const cur = (await readConfig()) ?? {
+      hero: { pc: '', sp: '' },
+      background: { pc: '', sp: '' },
+      banners: [],
+      socials: [],
       map: { embedSrc: '', address: '' }
     };
     return new Response(JSON.stringify(cur), {
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      }
     });
   }
 
   if (req.method === 'POST') {
-    const payload = await req.json();
-    const body = JSON.stringify(payload);
-    await put(KEY, body, {
+    const body = await req.json();
+    // そのまま保存
+    await put(KEY, JSON.stringify(body), {
       access: 'public',
-      contentType: 'application/json',
-      addRandomSuffix: false
+      addRandomSuffix: false,
+      contentType: 'application/json'
     });
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { 'Content-Type': 'application/json' }
     });
