@@ -1,254 +1,153 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useState } from "react";
-
-const STORAGE_KEY = "spice-nail-site-v4";
-const PW_KEY = "spice-nail-admin-pass-v1";
-const DEFAULT_PASSWORD = "5793";
-
-// localStorage 読み込み
-function loadData() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-// localStorage 保存
-function saveData(obj) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-}
-
-// パス読み込み/保存
-function loadPassword() {
-  if (typeof window === "undefined") return DEFAULT_PASSWORD;
-  return localStorage.getItem(PW_KEY) || DEFAULT_PASSWORD;
-}
-function savePassword(pw) {
-  localStorage.setItem(PW_KEY, pw);
-}
-
-// ファイル→Base64
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const rd = new FileReader();
-    rd.onload = () => resolve(rd.result);
-    rd.onerror = reject;
-    rd.readAsDataURL(file);
-  });
-}
-
-// アップロードボックス
-function UploadBox({ id, label, hint, value, onFile, height = 180 }) {
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const f = e.dataTransfer.files?.[0];
-    if (!f) return;
-    const dataUrl = await fileToDataUrl(f);
-    onFile(dataUrl);
-  };
-
-  const handleChange = async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const dataUrl = await fileToDataUrl(f);
-    onFile(dataUrl);
-  };
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <p style={{ marginBottom: 4, fontWeight: 600 }}>{label}</p>
-      {hint ? <p style={{ margin: 0, marginBottom: 6, fontSize: 12, color: "#888" }}>{hint}</p> : null}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => {
-          const input = document.getElementById(id);
-          if (input) input.click();
-        }}
-        style={{
-          border: dragOver ? "2px solid #111" : "2px dashed #ccc",
-          background: "#fafafa",
-          borderRadius: 12,
-          padding: 14,
-          textAlign: "center",
-          cursor: "pointer"
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 13, color: "#666" }}>
-          ファイルを選択 or ドラッグ＆ドロップ
-        </p>
-        <input
-          id={id}
-          type="file"
-          accept="image/*"
-          onChange={handleChange}
-          style={{ display: "none" }}
-        />
-      </div>
-      {value ? (
-        <img
-          src={value}
-          alt="preview"
-          style={{
-            width: "100%",
-            maxWidth: 380,
-            height,
-            objectFit: "cover",
-            borderRadius: 12,
-            marginTop: 8,
-            background: "#eee"
-          }}
-        />
-      ) : null}
-    </div>
-  );
-}
+import React, { useEffect, useRef, useState } from "react";
+import {
+  fetchConfig,
+  saveConfig,
+  uploadImage,
+  checkPassword
+} from "../lib/siteConfig.js";
+import { DEFAULT_SITE, saveSite } from "../lib/siteStore.js";
 
 export default function Admin() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [pwInput, setPwInput] = useState("");
-  const [site, setSite] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [pw, setPw] = useState("");
   const [tab, setTab] = useState("images");
-  const [importText, setImportText] = useState("");
+  const [site, setSite] = useState(DEFAULT_SITE);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // 初期ロード
+  // 画像input refs
+  const heroPcRef = useRef(null);
+  const heroSpRef = useRef(null);
+  const bgPcRef = useRef(null);
+  const bgSpRef = useRef(null);
+  const bannerRefs = useRef([]); // 動的に使う
+
+  // ログイン済みならセッションから復元
   useEffect(() => {
-    const d = loadData();
-    setSite(
-      d || {
-        heroPc: "",
-        heroSp: "",
-        bgPc: "",
-        bgSp: "",
-        banners: [],
-        sns: [],
-        map: { src: "", address: "" }
-      }
-    );
+    if (sessionStorage.getItem("admin_ok") === "1") {
+      setAuthed(true);
+    }
   }, []);
 
-  // ログイン
-  function handleLogin(e) {
+  // 認証後に設定読み込み
+  useEffect(() => {
+    if (!authed) return;
+    fetchConfig()
+      .then((data) => {
+        // 空を埋める
+        const merged = {
+          hero: { pc: "", sp: "", ...(data.hero || {}) },
+          background: { pc: "", sp: "", ...(data.background || {}) },
+          banners: data.banners || [],
+          socials: data.socials || [],
+          map: data.map || { embedSrc: "", address: "" }
+        };
+        setSite(merged);
+        saveSite(merged);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [authed]);
+
+  async function handleLogin(e) {
     e.preventDefault();
-    const realPw = loadPassword();
-    if (pwInput === realPw) {
-      setLoggedIn(true);
-    } else {
+    const ok = await checkPassword(pw);
+    if (!ok) {
       alert("パスワードが違います");
+      return;
+    }
+    sessionStorage.setItem("admin_ok", "1");
+    setAuthed(true);
+  }
+
+  async function handleSave() {
+    try {
+      setSaving(true);
+
+      // まず現在のsiteをコピー
+      const next = structuredClone(site);
+
+      // 各画像inputにファイルがあればアップロード
+      async function maybeUpload(ref, assign) {
+        const f = ref.current?.files?.[0];
+        if (!f) return;
+        const up = await uploadImage(f);
+        assign(up.url);
+      }
+
+      await maybeUpload(heroPcRef, (url) => (next.hero.pc = url));
+      await maybeUpload(heroSpRef, (url) => (next.hero.sp = url));
+      await maybeUpload(bgPcRef, (url) => (next.background.pc = url));
+      await maybeUpload(bgSpRef, (url) => (next.background.sp = url));
+
+      // バナーは複数
+      const newBanners = [...(next.banners || [])];
+      for (let i = 0; i < (bannerRefs.current?.length || 0); i++) {
+        const f = bannerRefs.current[i]?.files?.[0];
+        if (!f) continue;
+        const up = await uploadImage(f);
+        newBanners[i] = up.url;
+      }
+      next.banners = newBanners;
+
+      // サーバーに保存
+      await saveConfig(next);
+
+      // ローカルにもキャッシュ
+      saveSite(next);
+      setSite(next);
+      alert("保存しました！");
+    } catch (e) {
+      console.error(e);
+      alert("保存に失敗しました…");
+    } finally {
+      setSaving(false);
     }
   }
 
-  // 保存
-  function handleSave() {
-    setSaving(true);
-    saveData(site);
-    setTimeout(() => {
-      setSaving(false);
-      alert("保存しました（このブラウザに保存）");
-    }, 200);
-  }
-
-  // SNS操作
-  function addSNS() {
-    setSite((prev) => ({
-      ...prev,
-      sns: [...(prev.sns || []), { name: "", url: "" }]
-    }));
-  }
-  function updateSNS(idx, field, value) {
-    setSite((prev) => {
-      const next = [...(prev.sns || [])];
-      next[idx] = { ...next[idx], [field]: value };
-      return { ...prev, sns: next };
-    });
-  }
-  function deleteSNS(idx) {
-    setSite((prev) => {
-      const next = [...(prev.sns || [])];
-      next.splice(idx, 1);
-      return { ...prev, sns: next };
-    });
-  }
-
-  // バナー操作
-  function addBanner() {
+  function addBannerSlot() {
     setSite((prev) => ({
       ...prev,
       banners: [...(prev.banners || []), ""]
     }));
   }
-  function updateBanner(i, value) {
+
+  function updateSocial(i, key, val) {
     setSite((prev) => {
-      const arr = [...(prev.banners || [])];
-      arr[i] = value;
-      return { ...prev, banners: arr };
+      const arr = [...(prev.socials || [])];
+      arr[i] = { ...(arr[i] || {}), [key]: val };
+      return { ...prev, socials: arr };
     });
   }
-  function deleteBanner(i) {
+
+  function addSocial() {
+    setSite((prev) => ({
+      ...prev,
+      socials: [...(prev.socials || []), { name: "", url: "" }]
+    }));
+  }
+
+  function deleteSocial(i) {
     setSite((prev) => {
-      const arr = [...(prev.banners || [])];
+      const arr = [...(prev.socials || [])];
       arr.splice(i, 1);
-      return { ...prev, banners: arr };
+      return { ...prev, socials: arr };
     });
   }
 
-  // パスワード変更
-  function handleChangePassword() {
-    const newPw = prompt("新しいパスワードを入力してください（空欄不可）");
-    if (!newPw) return;
-    savePassword(newPw);
-    alert("パスワードを変更しました。次回から新パスワードでログインしてください。");
-  }
-
-  // 設定をコピー（エクスポート）
-  function handleExport() {
-    const json = JSON.stringify(site, null, 2);
-    navigator.clipboard?.writeText(json).catch(() => {});
-    setImportText(json);
-    alert("設定をコピーしました。スマホに送って貼り付けてください。");
-  }
-
-  // 設定を貼り付けて保存（インポート）
-  function handleImport() {
-    if (!importText.trim()) {
-      alert("貼り付ける設定がありません");
-      return;
-    }
-    try {
-      const obj = JSON.parse(importText);
-      setSite(obj);
-      saveData(obj);
-      alert("設定を読み込みました！");
-    } catch (e) {
-      alert("JSONの形式が違います");
-    }
-  }
-
-  // 未ログイン画面
-  if (!loggedIn) {
+  if (!authed) {
     return (
       <div className="login-box">
         <h2>管理画面ログイン</h2>
         <p style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>
-          パスワードを入力してください
+          環境変数 ADMIN_PASSWORD か、なければ「5793」
         </p>
         <form onSubmit={handleLogin}>
           <input
             type="password"
-            value={pwInput}
-            onChange={(e) => setPwInput(e.target.value)}
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
             placeholder="パスワード"
             style={{
               width: "100%",
@@ -266,7 +165,7 @@ export default function Admin() {
     );
   }
 
-  if (!site) return <div className="app-shell">読み込み中…</div>;
+  if (loading) return <div className="app-shell">読み込み中…</div>;
 
   return (
     <div className="app-shell admin-wrap">
@@ -295,13 +194,6 @@ export default function Admin() {
         >
           マップ
         </button>
-        <button
-          className="button"
-          style={{ background: tab === "settings" ? "#111" : "#ccc" }}
-          onClick={() => setTab("settings")}
-        >
-          その他
-        </button>
       </div>
 
       {/* 画像タブ */}
@@ -309,70 +201,81 @@ export default function Admin() {
         <>
           <div className="card">
             <h2>トップ画像（PC）</h2>
-            <UploadBox
-              id="hero-pc"
-              label="PCトップ画像"
-              hint="推奨サイズ：1800 × 800px / 横長"
-              value={site.heroPc}
-              onFile={(dataUrl) => setSite({ ...site, heroPc: dataUrl })}
-              height={220}
-            />
+            <p style={{ fontSize: 12, color: "#888" }}>
+              推奨サイズ：1800 × 800px / 横長
+            </p>
+            {site.hero?.pc ? (
+              <img
+                src={site.hero.pc}
+                style={{ width: "100%", maxWidth: 380, borderRadius: 12, marginBottom: 8 }}
+              />
+            ) : null}
+            <input type="file" accept="image/*" ref={heroPcRef} />
           </div>
+
           <div className="card">
             <h2>トップ画像（スマホ）</h2>
-            <UploadBox
-              id="hero-sp"
-              label="スマホトップ画像"
-              hint="推奨サイズ：1000 × 1000px / 正方形～少し縦長"
-              value={site.heroSp}
-              onFile={(dataUrl) => setSite({ ...site, heroSp: dataUrl })}
-              height={220}
-            />
+            <p style={{ fontSize: 12, color: "#888" }}>
+              推奨サイズ：1000 × 1000px / 正方形〜少し縦長
+            </p>
+            {site.hero?.sp ? (
+              <img
+                src={site.hero.sp}
+                style={{ width: "100%", maxWidth: 380, borderRadius: 12, marginBottom: 8 }}
+              />
+            ) : null}
+            <input type="file" accept="image/*" ref={heroSpRef} />
           </div>
+
           <div className="card">
             <h2>背景画像（PC）</h2>
-            <UploadBox
-              id="bg-pc"
-              label="PC背景画像"
-              hint="推奨サイズ：1920 × 1080px / 大きめ横長"
-              value={site.bgPc}
-              onFile={(dataUrl) => setSite({ ...site, bgPc: dataUrl })}
-              height={140}
-            />
+            <p style={{ fontSize: 12, color: "#888" }}>
+              推奨サイズ：1920 × 1080px / 大きめ横長
+            </p>
+            {site.background?.pc ? (
+              <img
+                src={site.background.pc}
+                style={{ width: "100%", maxWidth: 380, borderRadius: 12, marginBottom: 8 }}
+              />
+            ) : null}
+            <input type="file" accept="image/*" ref={bgPcRef} />
           </div>
+
           <div className="card">
             <h2>背景画像（スマホ）</h2>
-            <UploadBox
-              id="bg-sp"
-              label="スマホ背景画像"
-              hint="推奨サイズ：1080 × 1920px / 縦長"
-              value={site.bgSp}
-              onFile={(dataUrl) => setSite({ ...site, bgSp: dataUrl })}
-              height={140}
-            />
+            <p style={{ fontSize: 12, color: "#888" }}>
+              推奨サイズ：1080 × 1920px / 縦長
+            </p>
+            {site.background?.sp ? (
+              <img
+                src={site.background.sp}
+                style={{ width: "100%", maxWidth: 380, borderRadius: 12, marginBottom: 8 }}
+              />
+            ) : null}
+            <input type="file" accept="image/*" ref={bgSpRef} />
           </div>
+
           <div className="card">
-            <h2>スライドバナー（横長3:1）</h2>
+            <h2>スライドバナー</h2>
+            <p style={{ fontSize: 12, color: "#888" }}>
+              推奨サイズ：1200 × 400px / 3:1
+            </p>
             {(site.banners || []).map((b, i) => (
-              <div key={i} style={{ marginBottom: 12 }}>
-                <UploadBox
-                  id={`banner-${i}`}
-                  label={`バナー #${i + 1}`}
-                  hint="推奨サイズ：1200 × 400px / 3:1"
-                  value={b}
-                  onFile={(dataUrl) => updateBanner(i, dataUrl)}
-                  height={130}
+              <div key={i} style={{ marginBottom: 10 }}>
+                {b ? (
+                  <img
+                    src={b}
+                    style={{ width: "100%", maxWidth: 380, borderRadius: 12, marginBottom: 6 }}
+                  />
+                ) : null}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={(el) => (bannerRefs.current[i] = el)}
                 />
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => deleteBanner(i)}
-                >
-                  このバナーを削除
-                </button>
               </div>
             ))}
-            <button type="button" className="button" onClick={addBanner}>
+            <button className="button" onClick={addBannerSlot}>
               ＋ バナーを追加
             </button>
           </div>
@@ -383,48 +286,29 @@ export default function Admin() {
       {tab === "sns" && (
         <div className="card">
           <h2>SNSリンク</h2>
-          {(site.sns || []).map((s, i) => (
+          {(site.socials || []).map((s, i) => (
             <div
               key={i}
-              style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 8,
-                alignItems: "center"
-              }}
+              style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}
             >
               <input
                 value={s.name}
-                onChange={(e) => updateSNS(i, "name", e.target.value)}
-                placeholder="例）Instagram"
-                style={{
-                  flex: "0 0 140px",
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #ddd"
-                }}
+                onChange={(e) => updateSocial(i, "name", e.target.value)}
+                placeholder="Instagram"
+                style={{ flex: "0 0 140px", padding: 8, borderRadius: 8, border: "1px solid #ddd" }}
               />
               <input
                 value={s.url}
-                onChange={(e) => updateSNS(i, "url", e.target.value)}
+                onChange={(e) => updateSocial(i, "url", e.target.value)}
                 placeholder="https://..."
-                style={{
-                  flex: 1,
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #ddd"
-                }}
+                style={{ flex: 1, padding: 8, borderRadius: 8, border: "1px solid #ddd" }}
               />
-              <button
-                type="button"
-                className="button"
-                onClick={() => deleteSNS(i)}
-              >
+              <button className="button" onClick={() => deleteSocial(i)}>
                 削除
               </button>
             </div>
           ))}
-          <button type="button" className="button" onClick={addSNS}>
+          <button className="button" onClick={addSocial}>
             ＋ SNSを追加
           </button>
         </div>
@@ -435,14 +319,14 @@ export default function Admin() {
         <div className="card">
           <h2>Googleマップ</h2>
           <div className="input-row">
-            <label>埋め込みURL（iframe のsrcだけ）</label>
+            <label>埋め込みURL（iframeのsrcだけ）</label>
             <input
-              value={site.map?.src || ""}
+              value={site.map?.embedSrc || ""}
               onChange={(e) =>
-                setSite({
-                  ...site,
-                  map: { ...(site.map || {}), src: e.target.value }
-                })
+                setSite((prev) => ({
+                  ...prev,
+                  map: { ...(prev.map || {}), embedSrc: e.target.value }
+                }))
               }
               placeholder="https://www.google.com/maps/embed?..."
             />
@@ -452,10 +336,10 @@ export default function Admin() {
             <input
               value={site.map?.address || ""}
               onChange={(e) =>
-                setSite({
-                  ...site,
-                  map: { ...(site.map || {}), address: e.target.value }
-                })
+                setSite((prev) => ({
+                  ...prev,
+                  map: { ...(prev.map || {}), address: e.target.value }
+                }))
               }
               placeholder="千葉県〇〇市…"
             />
@@ -463,48 +347,9 @@ export default function Admin() {
         </div>
       )}
 
-      {/* その他タブ */}
-      {tab === "settings" && (
-        <div className="card">
-          <h2>その他設定</h2>
-          <p style={{ fontSize: 13, marginBottom: 12 }}>
-            PCで作った設定をスマホにコピーするときは下の「設定をコピー」を押して、スマホの管理画面で貼り付けてください。
-          </p>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button className="button" onClick={handleExport}>
-              設定をコピー（エクスポート）
-            </button>
-            <button className="button" onClick={handleImport}>
-              貼り付けて保存（インポート）
-            </button>
-          </div>
-          <textarea
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            placeholder="ここにPCでコピーしたJSONを貼り付け"
-            style={{
-              width: "100%",
-              minHeight: 140,
-              borderRadius: 12,
-              border: "1px solid #ddd",
-              padding: 8,
-              fontFamily: "monospace",
-              fontSize: 12
-            }}
-          />
-          <hr style={{ margin: "20px 0" }} />
-          <p style={{ fontSize: 13, marginBottom: 12 }}>
-            管理画面パスワードの変更
-          </p>
-          <button className="button" onClick={handleChangePassword}>
-            パスワードを変更する
-          </button>
-        </div>
-      )}
-
-      <div style={{ textAlign: "right", marginBottom: 50, marginTop: 12 }}>
+      <div style={{ textAlign: "right", marginTop: 16, marginBottom: 50 }}>
         <button className="button" onClick={handleSave} disabled={saving}>
-          {saving ? "保存中..." : "保存する"}
+          {saving ? "保存中…" : "保存する"}
         </button>
       </div>
     </div>
