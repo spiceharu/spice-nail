@@ -2,19 +2,12 @@
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req) {
-  const pass = process.env.ADMIN_PASSWORD || '';
+  const pass = process.env.ADMIN_PASSWORD || '5793';
 
   if (req.method === 'POST') {
     const { pw } = await req.json();
-    const ok = String(pw || '') === pass;
+    const ok = String(pw || '') === String(pass);
     return new Response(JSON.stringify({ ok }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  if (req.method === 'GET') {
-    // 動作確認用
-    return new Response(JSON.stringify({ ok: !!pass, len: pass.length }), {
       headers: { 'Content-Type': 'application/json' }
     });
   }
